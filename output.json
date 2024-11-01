@@ -1,811 +1,1088 @@
-{
-  "energyTotals": {
-    "respiration": 581189.9224670421,
-    "convection": -12899000.989946721,
-    "evaporation": 55711023.79983103,
-    "airExchange": -274123.9257254145,
-    "net": -41956708.96169187
+[
+  {
+    "Tp": 25,
+    "Ta": 25,
+    "wp": 0.92,
+    "wa": 0.008
   },
-  "timeSeries": [
-    {
-      "time": 0,
-      "productTemperature": 15.56,
-      "moisture": 0.908,
-      "evaporationRate": 0,
-      "energyFlows": {
-        "respiration": 0,
-        "convection": 0,
-        "evaporation": 0,
-        "airExchange": 0,
-        "net": 0
-      }
-    },
-    {
-      "time": 0.08333333333333333,
-      "productTemperature": 11.231692777163953,
-      "moisture": 0.9070766525758048,
-      "evaporationRate": 0.0026469292826928363,
-      "energyFlows": {
-        "respiration": 34855.29933018314,
-        "convection": 12526416,
-        "evaporation": 1945493.0227792345,
-        "airExchange": 266205.912525,
-        "net": -14703259.635974051
-      }
-    },
-    {
-      "time": 0.16666666666666666,
-      "productTemperature": 8.443728629530167,
-      "moisture": 0.9063697781875587,
-      "evaporationRate": 0.0020263732463054523,
-      "energyFlows": {
-        "respiration": 21465.237750588538,
-        "convection": 7836262.293334858,
-        "evaporation": 1489384.3360345073,
-        "airExchange": 166532.8178931991,
-        "net": -9470714.209511975
-      }
-    },
-    {
-      "time": 0.25,
-      "productTemperature": 6.633500053462466,
-      "moisture": 0.905777704486715,
-      "evaporationRate": 0.0016972779424186675,
-      "energyFlows": {
-        "respiration": 15708.198810539749,
-        "convection": 4815224.342958888,
-        "evaporation": 1247499.2876777204,
-        "airExchange": 102331.04107591226,
-        "net": -6149346.47290198
-      }
-    },
-    {
-      "time": 0.3333333333333333,
-      "productTemperature": 5.452783135171304,
-      "moisture": 0.9052511665232742,
-      "evaporationRate": 0.0015094088285303635,
-      "energyFlows": {
-        "respiration": 12825.523292499996,
-        "convection": 2853660.6579319285,
-        "evaporation": 1109415.4889698173,
-        "airExchange": 60644.747825831495,
-        "net": -4010895.3714350774
-      }
-    },
-    {
-      "time": 0.41666666666666663,
-      "productTemperature": 4.6805865676867064,
-      "moisture": 0.9047638870760812,
-      "evaporationRate": 0.0013968677486197454,
-      "energyFlows": {
-        "respiration": 11236.831367428453,
-        "convection": 1574235.8052716244,
-        "evaporation": 1026697.7952355128,
-        "airExchange": 33454.97060546776,
-        "net": -2623151.739745177
-      }
-    },
-    {
-      "time": 0.5,
-      "productTemperature": 4.174727246708641,
-      "moisture": 0.9043008810621651,
-      "evaporationRate": 0.0013272839065597345,
-      "energyFlows": {
-        "respiration": 10305.841623201573,
-        "convection": 737483.6047453152,
-        "evaporation": 975553.6713214047,
-        "airExchange": 15672.67891897036,
-        "net": -1718404.1133624886
-      }
-    },
-    {
-      "time": 0.5833333333333333,
-      "productTemperature": 3.8429973524604586,
-      "moisture": 0.9038531987948145,
-      "evaporationRate": 0.0012833558330715771,
-      "energyFlows": {
-        "respiration": 9738.18386142368,
-        "convection": 189334.4445334833,
-        "evaporation": 943266.5373076091,
-        "airExchange": 4023.6527814061037,
-        "net": -1126886.450761075
-      }
-    },
-    {
-      "time": 0.6666666666666666,
-      "productTemperature": 3.6253122338352295,
-      "moisture": 0.9034153236563287,
-      "evaporationRate": 0.0012552420636592167,
-      "energyFlows": {
-        "respiration": 9383.012657097617,
-        "convection": -170128.06887384702,
-        "evaporation": 922602.9167895243,
-        "airExchange": -3615.4872886768653,
-        "net": -739476.3479699027
-      }
-    },
-    {
-      "time": 0.75,
-      "productTemperature": 3.4824032876308357,
-      "moisture": 0.9029837817721137,
-      "evaporationRate": 0.0012370867347497095,
-      "energyFlows": {
-        "respiration": 9157.014127748242,
-        "convection": -406011.6634161453,
-        "evaporation": 909258.7500410364,
-        "airExchange": -8628.382240817176,
-        "net": -485461.69025632564
-      }
-    },
-    {
-      "time": 0.8333333333333333,
-      "productTemperature": 3.388558282664067,
-      "moisture": 0.9025563540493151,
-      "evaporationRate": 0.001225292805355881,
-      "energyFlows": {
-        "respiration": 9011.615487930785,
-        "convection": -560867.7975232264,
-        "evaporation": 900590.2119365725,
-        "airExchange": -11919.317053302191,
-        "net": -318791.4818721131
-      }
-    },
-    {
-      "time": 0.9166666666666666,
-      "productTemperature": 3.326921237315442,
-      "moisture": 0.9021316093508928,
-      "evaporationRate": 0.001217601468810808,
-      "energyFlows": {
-        "respiration": 8917.393669953162,
-        "convection": -662558.244905217,
-        "evaporation": 894937.0795759436,
-        "airExchange": -14080.397951493524,
-        "net": -209381.04304927992
-      }
-    },
-    {
-      "time": 1,
-      "productTemperature": 3.286433451109618,
-      "moisture": 0.9017086188475673,
-      "evaporationRate": 0.0012125727761996576,
-      "energyFlows": {
-        "respiration": 8856.045785140139,
-        "convection": -729348.1472449871,
-        "evaporation": 891240.9905067482,
-        "airExchange": -15499.787735436046,
-        "net": -137537.00974118494
-      }
-    },
-    {
-      "time": 1.0833333333333333,
-      "productTemperature": 3.259836000336406,
-      "moisture": 0.9012867771870352,
-      "evaporationRate": 0.001209279426858655,
-      "energyFlows": {
-        "respiration": 8815.977791505436,
-        "convection": -773220.7123776181,
-        "evaporation": 888820.3787411114,
-        "airExchange": -16432.148295387473,
-        "net": -90351.54027660043
-      }
-    },
-    {
-      "time": 1.1666666666666665,
-      "productTemperature": 3.2423625717520688,
-      "moisture": 0.9008656887478849,
-      "evaporationRate": 0.001207120192231044,
-      "energyFlows": {
-        "respiration": 8789.75482492802,
-        "convection": -802041.7100354704,
-        "evaporation": 887233.3412898172,
-        "airExchange": -17044.63952842568,
-        "net": -59357.23690099312
-      }
-    },
-    {
-      "time": 1.25,
-      "productTemperature": 3.2308828657779127,
-      "moisture": 0.9004450945051962,
-      "evaporationRate": 0.0012057034957074994,
-      "energyFlows": {
-        "respiration": 8772.569884923618,
-        "convection": -820975.9172494584,
-        "evaporation": 886192.0693450121,
-        "airExchange": -17447.02101642169,
-        "net": -38996.56119420837
-      }
-    },
-    {
-      "time": 1.3333333333333333,
-      "productTemperature": 3.22334075458869,
-      "moisture": 0.9000248246645424,
-      "evaporationRate": 0.0012047735432076847,
-      "energyFlows": {
-        "respiration": 8761.298002192116,
-        "convection": -833415.3266430538,
-        "evaporation": 885508.5542576482,
-        "airExchange": -17711.37790261277,
-        "net": -25620.55170978945
-      }
-    },
-    {
-      "time": 1.4166666666666665,
-      "productTemperature": 3.218385552691752,
-      "moisture": 0.8996047678356,
-      "evaporationRate": 0.0012041629096350682,
-      "energyFlows": {
-        "respiration": 8753.90031453246,
-        "convection": -841587.9583276955,
-        "evaporation": 885059.7385817751,
-        "airExchange": -17885.059095648416,
-        "net": -16832.820843898742
-      }
-    },
-    {
-      "time": 1.5,
-      "productTemperature": 3.215129931344331,
-      "moisture": 0.8991848509050531,
-      "evaporationRate": 0.0012037618675676928,
-      "energyFlows": {
-        "respiration": 8749.043399942952,
-        "convection": -846957.4151032176,
-        "evaporation": 884764.9726622541,
-        "airExchange": -17999.168441904472,
-        "net": -11059.345717189139
-      }
-    },
-    {
-      "time": 1.5833333333333333,
-      "productTemperature": 3.212990939541811,
-      "moisture": 0.8987650258671371,
-      "evaporationRate": 0.0012034984420256432,
-      "energyFlows": {
-        "respiration": 8745.853821369868,
-        "convection": -850485.2063952829,
-        "evaporation": 884571.3548888477,
-        "airExchange": -18074.13951903475,
-        "net": -7266.1551531602345
-      }
-    },
-    {
-      "time": 1.6666666666666665,
-      "productTemperature": 3.211585584273478,
-      "moisture": 0.8983452611944992,
-      "evaporationRate": 0.0012033253948952663,
-      "energyFlows": {
-        "respiration": 8743.758853643987,
-        "convection": -852803.0179124934,
-        "evaporation": 884444.1652480207,
-        "airExchange": -18123.396635355974,
-        "net": -4773.991846527242
-      }
-    },
-    {
-      "time": 1.75,
-      "productTemperature": 3.2106622386460897,
-      "moisture": 0.8979255361787889,
-      "evaporationRate": 0.0012032117117027547,
-      "energyFlows": {
-        "respiration": 8742.382696142438,
-        "convection": -854325.8608812592,
-        "evaporation": 884360.6081015246,
-        "airExchange": -18155.759427884386,
-        "net": -3136.60509623864
-      }
-    },
-    {
-      "time": 1.8333333333333333,
-      "productTemperature": 3.2100555816183434,
-      "moisture": 0.8975058372166685,
-      "evaporationRate": 0.0012031370247450063,
-      "energyFlows": {
-        "respiration": 8741.478651915411,
-        "convection": -855326.3982030972,
-        "evaporation": 884305.7131875796,
-        "airExchange": -18177.02240931301,
-        "net": -2060.813923254027
-      }
-    },
-    {
-      "time": 1.9166666666666665,
-      "productTemperature": 3.209656995038751,
-      "moisture": 0.8970861553715234,
-      "evaporationRate": 0.0012030879560829136,
-      "energyFlows": {
-        "respiration": 8740.884727193728,
-        "convection": -855983.7717583631,
-        "evaporation": 884269.6477209415,
-        "airExchange": -18190.992624508588,
-        "net": -1353.9986108760131
-      }
-    },
-    {
-      "time": 2,
-      "productTemperature": 3.209395114973064,
-      "moisture": 0.8966664847722636,
-      "evaporationRate": 0.0012030557178780454,
-      "energyFlows": {
-        "respiration": 8740.494527976618,
-        "convection": -856415.6801760095,
-        "evaporation": 884245.9526403634,
-        "airExchange": -18200.17135324048,
-        "net": -889.6065831367341
-      }
-    },
-    {
-      "time": 2.083333333333333,
-      "productTemperature": 3.2092230539790707,
-      "moisture": 0.8962468215616524,
-      "evaporationRate": 0.001203034537085476,
-      "energyFlows": {
-        "respiration": 8740.238168072741,
-        "convection": -856699.4534151875,
-        "evaporation": 884230.3847578248,
-        "airExchange": -18206.201977968696,
-        "net": -584.4911965958163
-      }
-    },
-    {
-      "time": 2.1666666666666665,
-      "productTemperature": 3.2091100060641904,
-      "moisture": 0.8958271632054848,
-      "evaporationRate": 0.0012030206210135183,
-      "energyFlows": {
-        "respiration": 8740.069738040142,
-        "convection": -856885.898708279,
-        "evaporation": 884220.156444936,
-        "airExchange": -18210.16423176766,
-        "net": -384.02376684917544
-      }
-    },
-    {
-      "time": 2.25,
-      "productTemperature": 3.2090357310439255,
-      "moisture": 0.8954075080387686,
-      "evaporationRate": 0.0012030114779199744,
-      "energyFlows": {
-        "respiration": 8739.959077514803,
-        "convection": -857008.3974288432,
-        "evaporation": 884213.4362711811,
-        "airExchange": -18212.7675209839,
-        "net": -252.31224383918016
-      }
-    },
-    {
-      "time": 2.333333333333333,
-      "productTemperature": 3.2089869306797336,
-      "moisture": 0.8949878549675819,
-      "evaporationRate": 0.0012030054707350786,
-      "energyFlows": {
-        "respiration": 8739.886371825805,
-        "convection": -857088.8818408024,
-        "evaporation": 884209.0209902826,
-        "airExchange": -18214.477940494926,
-        "net": -165.77483715951894
-      }
-    },
-    {
-      "time": 2.4166666666666665,
-      "productTemperature": 3.2089548677363844,
-      "moisture": 0.8945682032732005,
-      "evaporationRate": 0.0012030015238933072,
-      "energyFlows": {
-        "respiration": 8739.8386028769,
-        "convection": -857141.7619154406,
-        "evaporation": 884206.1200615808,
-        "airExchange": -18215.601724706106,
-        "net": -108.9178185572564
-      }
-    },
-    {
-      "time": 2.5,
-      "productTemperature": 3.2089338016559124,
-      "moisture": 0.8941485524834092,
-      "evaporationRate": 0.0012029989307351205,
-      "energyFlows": {
-        "respiration": 8739.807217738851,
-        "convection": -857176.5053208538,
-        "evaporation": 884204.2140903135,
-        "airExchange": -18216.34007635771,
-        "net": -71.56147536321077
-      }
-    },
-    {
-      "time": 2.583333333333333,
-      "productTemperature": 3.2089199607630334,
-      "moisture": 0.8937289022879531,
-      "evaporationRate": 0.0012029972269740727,
-      "energyFlows": {
-        "respiration": 8739.786597053175,
-        "convection": -857199.3325256533,
-        "evaporation": 884202.9618259433,
-        "airExchange": -18216.825190127205,
-        "net": -47.017513109643915
-      }
-    },
-    {
-      "time": 2.6666666666666665,
-      "productTemperature": 3.208910866982109,
-      "moisture": 0.8933092524829884,
-      "evaporationRate": 0.0012029961075655502,
-      "energyFlows": {
-        "respiration": 8739.77304882127,
-        "convection": -857214.330517177,
-        "evaporation": 884202.1390606794,
-        "airExchange": -18217.14392088144,
-        "net": -30.891573799657635
-      }
-    },
-    {
-      "time": 2.75,
-      "productTemperature": 3.2089048921614336,
-      "moisture": 0.8928896029345852,
-      "evaporationRate": 0.001202995372089229,
-      "energyFlows": {
-        "respiration": 8739.764147336682,
-        "convection": -857224.1845381865,
-        "evaporation": 884201.5984855832,
-        "airExchange": -18217.353334224805,
-        "net": -20.296465835162962
-      }
-    },
-    {
-      "time": 2.833333333333333,
-      "productTemperature": 3.2089009665684594,
-      "moisture": 0.8924699535547487,
-      "evaporationRate": 0.0012029948888647847,
-      "energyFlows": {
-        "respiration": 8739.758298864004,
-        "convection": -857230.6588538705,
-        "evaporation": 884201.2433156167,
-        "airExchange": -18217.49092354921,
-        "net": -13.335239333056961
-      }
-    },
-    {
-      "time": 2.9166666666666665,
-      "productTemperature": 3.208898387364638,
-      "moisture": 0.8920503042856642,
-      "evaporationRate": 0.0012029945713754385,
-      "energyFlows": {
-        "respiration": 8739.754456286664,
-        "convection": -857234.9126264175,
-        "evaporation": 884201.0099609473,
-        "airExchange": -18217.58132286235,
-        "net": -8.761555380839127
-      }
-    },
-    {
-      "time": 3,
-      "productTemperature": 3.2088966927690885,
-      "moisture": 0.8916306550893464,
-      "evaporationRate": 0.001202994362777759,
-      "energyFlows": {
-        "respiration": 8739.751931626924,
-        "convection": -857237.707451678,
-        "evaporation": 884200.8566416529,
-        "airExchange": -18217.64071726605,
-        "net": -5.756541081897012
-      }
-    },
-    {
-      "time": 3.083333333333333,
-      "productTemperature": 3.2088955793812817,
-      "moisture": 0.8912110059408379,
-      "evaporationRate": 0.0012029942257243595,
-      "energyFlows": {
-        "respiration": 8739.750272868472,
-        "convection": -857239.5437154158,
-        "evaporation": 884200.7559074042,
-        "airExchange": -18217.679740739637,
-        "net": -3.782178380410187
-      }
-    },
-    {
-      "time": 3.1666666666666665,
-      "productTemperature": 3.2088948478601753,
-      "moisture": 0.8907913568237412,
-      "evaporationRate": 0.0012029941356771654,
-      "energyFlows": {
-        "respiration": 8739.749183026624,
-        "convection": -857240.7501824431,
-        "evaporation": 884200.6897227166,
-        "airExchange": -18217.705380049076,
-        "net": -2.4849771978260833
-      }
-    },
-    {
-      "time": 3.25,
-      "productTemperature": 3.2088943672341737,
-      "moisture": 0.8903717077272828,
-      "evaporationRate": 0.001202994076514116,
-      "energyFlows": {
-        "respiration": 8739.748466975823,
-        "convection": -857241.542858714,
-        "evaporation": 884200.6462378752,
-        "airExchange": -18217.72222565839,
-        "net": -1.6326865269547852
-      }
-    },
-    {
-      "time": 3.333333333333333,
-      "productTemperature": 3.208894051451961,
-      "moisture": 0.8899520586443842,
-      "evaporationRate": 0.0012029940376426496,
-      "energyFlows": {
-        "respiration": 8739.747996514194,
-        "convection": -857242.0636650493,
-        "evaporation": 884200.6176673474,
-        "airExchange": -18217.733293606776,
-        "net": -1.072712177185167
-      }
-    },
-    {
-      "time": 3.4166666666666665,
-      "productTemperature": 3.2088938439758663,
-      "moisture": 0.8895324095703947,
-      "evaporationRate": 0.001202994012103209,
-      "energyFlows": {
-        "respiration": 8739.74768741022,
-        "convection": -857242.4058466553,
-        "evaporation": 884200.5988958586,
-        "airExchange": -18217.740565500557,
-        "net": -0.704796292600804
-      }
-    },
-    {
-      "time": 3.5,
-      "productTemperature": 3.208893707659354,
-      "moisture": 0.8891127605022587,
-      "evaporationRate": 0.0012029939953232185,
-      "energyFlows": {
-        "respiration": 8739.747484321886,
-        "convection": -857242.6306677513,
-        "evaporation": 884200.5865625655,
-        "airExchange": -18217.745343300132,
-        "net": -0.4630671921513567
-      }
-    },
-    {
-      "time": 3.583333333333333,
-      "productTemperature": 3.208893618096305,
-      "moisture": 0.8886931114379686,
-      "evaporationRate": 0.001202993984298384,
-      "energyFlows": {
-        "respiration": 8739.747350888236,
-        "convection": -857242.778380324,
-        "evaporation": 884200.5784593123,
-        "airExchange": -18217.748482423103,
-        "net": -0.30424567699446925
-      }
-    },
-    {
-      "time": 3.6666666666666665,
-      "productTemperature": 3.208893559251345,
-      "moisture": 0.8882734623762053,
-      "evaporationRate": 0.0012029939770548167,
-      "energyFlows": {
-        "respiration": 8739.747263219291,
-        "convection": -857242.8754308439,
-        "evaporation": 884200.5731352903,
-        "airExchange": -18217.750544898292,
-        "net": -0.19989632876968244
-      }
-    },
-    {
-      "time": 3.75,
-      "productTemperature": 3.2088935205888682,
-      "moisture": 0.8878538133161021,
-      "evaporationRate": 0.0012029939722956267,
-      "energyFlows": {
-        "respiration": 8739.747205618803,
-        "convection": -857242.9391952426,
-        "evaporation": 884200.5696372857,
-        "airExchange": -18217.751899991395,
-        "net": -0.13133643290348118
-      }
-    },
-    {
-      "time": 3.833333333333333,
-      "productTemperature": 3.208893495186742,
-      "moisture": 0.8874341642570898,
-      "evaporationRate": 0.001202993969168732,
-      "energyFlows": {
-        "respiration": 8739.747167773974,
-        "convection": -857242.9810899023,
-        "evaporation": 884200.5673390181,
-        "airExchange": -18217.75279031838,
-        "net": -0.08629102336999495
-      }
-    },
-    {
-      "time": 3.9166666666666665,
-      "productTemperature": 3.208893478496967,
-      "moisture": 0.887014515198794,
-      "evaporationRate": 0.0012029939671142909,
-      "energyFlows": {
-        "respiration": 8739.747142909058,
-        "convection": -857243.0086156463,
-        "evaporation": 884200.5658290038,
-        "airExchange": -18217.753375283446,
-        "net": -0.05669516499256133
-      }
-    },
-    {
-      "time": 4,
-      "productTemperature": 3.208893467531406,
-      "moisture": 0.8865948661409693,
-      "evaporationRate": 0.0012029939657644763,
-      "energyFlows": {
-        "respiration": 8739.747126572245,
-        "convection": -857243.0267006864,
-        "evaporation": 884200.56483689,
-        "airExchange": -18217.753759618805,
-        "net": -0.037250012435833924
-      }
-    },
-    {
-      "time": 4.083333333333333,
-      "productTemperature": 3.2088934603267822,
-      "moisture": 0.8861752170834538,
-      "evaporationRate": 0.0012029939648776171,
-      "energyFlows": {
-        "respiration": 8739.747115838589,
-        "convection": -857243.0385829686,
-        "evaporation": 884200.5641850487,
-        "airExchange": -18217.75401213587,
-        "net": -0.02447410560125718
-      }
-    },
-    {
-      "time": 4.166666666666666,
-      "productTemperature": 3.2088934555931807,
-      "moisture": 0.8857555680261416,
-      "evaporationRate": 0.0012029939642949313,
-      "energyFlows": {
-        "respiration": 8739.747108786329,
-        "convection": -857243.0463898986,
-        "evaporation": 884200.5637567744,
-        "airExchange": -18217.754178045332,
-        "net": -0.016080044078989886
-      }
-    },
-    {
-      "time": 4.25,
-      "productTemperature": 3.2088934524830974,
-      "moisture": 0.885335918968963,
-      "evaporationRate": 0.0012029939639120915,
-      "energyFlows": {
-        "respiration": 8739.747104152837,
-        "convection": -857243.0515192292,
-        "evaporation": 884200.5634753872,
-        "airExchange": -18217.754287051623,
-        "net": -0.010564953550783684
-      }
-    },
-    {
-      "time": 4.333333333333333,
-      "productTemperature": 3.2088934504397018,
-      "moisture": 0.8849162699118721,
-      "evaporationRate": 0.0012029939636605588,
-      "energyFlows": {
-        "respiration": 8739.747101108525,
-        "convection": -857243.0548893156,
-        "evaporation": 884200.5632905106,
-        "airExchange": -18217.75435867122,
-        "net": -0.006941415173059795
-      }
-    },
-    {
-      "time": 4.416666666666666,
-      "productTemperature": 3.208893449097144,
-      "moisture": 0.8844966208548388,
-      "evaporationRate": 0.0012029939634952969,
-      "energyFlows": {
-        "respiration": 8739.747099108343,
-        "convection": -857243.0571035392,
-        "evaporation": 884200.563169043,
-        "airExchange": -18217.75440572693,
-        "net": -0.004560668585327221
-      }
-    },
-    {
-      "time": 4.5,
-      "productTemperature": 3.2088934482150537,
-      "moisture": 0.8840769717978435,
-      "evaporationRate": 0.0012029939633867123,
-      "energyFlows": {
-        "respiration": 8739.74709779418,
-        "convection": -857243.0585583346,
-        "evaporation": 884200.5630892335,
-        "airExchange": -18217.754436643605,
-        "net": -0.0029964610730530694
-      }
-    },
-    {
-      "time": 4.583333333333333,
-      "productTemperature": 3.2088934476355004,
-      "moisture": 0.883657322740873,
-      "evaporationRate": 0.0012029939633153718,
-      "energyFlows": {
-        "respiration": 8739.747096930743,
-        "convection": -857243.0595141678,
-        "evaporation": 884200.5630367983,
-        "airExchange": -18217.754456956554,
-        "net": -0.0019687431304191705
-      }
-    },
-    {
-      "time": 4.666666666666666,
-      "productTemperature": 3.2088934472547197,
-      "moisture": 0.8832376736839189,
-      "evaporationRate": 0.001202993963268503,
-      "energyFlows": {
-        "respiration": 8739.747096363446,
-        "convection": -857243.0601421717,
-        "evaporation": 884200.5630023496,
-        "airExchange": -18217.75447030262,
-        "net": -0.00129351181385573
-      }
-    },
-    {
-      "time": 4.75,
-      "productTemperature": 3.208893447004539,
-      "moisture": 0.8828180246269756,
-      "evaporationRate": 0.0012029939632377032,
-      "energyFlows": {
-        "respiration": 8739.747095990719,
-        "convection": -857243.0605547857,
-        "evaporation": 884200.5629797118,
-        "airExchange": -18217.754479071315,
-        "net": -0.0008498641400365159
-      }
-    },
-    {
-      "time": 4.833333333333333,
-      "productTemperature": 3.2088934468401646,
-      "moisture": 0.8823983755700392,
-      "evaporationRate": 0.0012029939632174696,
-      "energyFlows": {
-        "respiration": 8739.74709574583,
-        "convection": -857243.0608258817,
-        "evaporation": 884200.5629648401,
-        "airExchange": -18217.754484832523,
-        "net": -0.000558380033908179
-      }
-    },
-    {
-      "time": 4.916666666666666,
-      "productTemperature": 3.2088934467321666,
-      "moisture": 0.8819787265131075,
-      "evaporationRate": 0.0012029939632041762,
-      "energyFlows": {
-        "respiration": 8739.747095584931,
-        "convection": -857243.0610039976,
-        "evaporation": 884200.5629550695,
-        "airExchange": -18217.754488617767,
-        "net": -0.0003668691460916307
-      }
-    },
-    {
-      "time": 5,
-      "productTemperature": 3.2088934466612096,
-      "moisture": 0.8815590774561789,
-      "evaporationRate": 0.001202993963195441,
-      "energyFlows": {
-        "respiration": 8739.747095479217,
-        "convection": -857243.0611210242,
-        "evaporation": 884200.5629486492,
-        "airExchange": -18217.754491104766,
-        "net": -0.00024104104522848502
-      }
-    }
-  ],
-  "airMetrics": {
-    "volumetricAirflow": 374.1,
-    "airResidenceTime": 0.007201283079390537,
-    "effectiveAirVolume": 2.694,
-    "airMoistureContent": 0.004525645438816924,
-    "airDensity": 1.225
+  {
+    "Tp": -1549.4693946919397,
+    "Ta": -263.66815271577434,
+    "wp": -1.5361725741218395,
+    "wa": 612.5597089122094
+  },
+  {
+    "Tp": -13347387914641.504,
+    "Ta": 9196278602.984728,
+    "wp": -20821910310.013336,
+    "wa": 5193673757025.274
+  },
+  {
+    "Tp": -1.0328984595490932e+27,
+    "Ta": 9.987995815279639e+29,
+    "wp": -21738209165.02671,
+    "wa": -135975617707801.78
+  },
+  {
+    "Tp": -5.7879037362172696e+60,
+    "Ta": 5.5968287842947045e+63,
+    "wp": -908093071281.8586,
+    "wa": 3787048881613028
+  },
+  {
+    "Tp": -1.817392111580056e+128,
+    "Ta": 1.7573948956326532e+131,
+    "wp": -1794447933398.7017,
+    "wa": -99094328058691360
+  },
+  {
+    "Tp": -1.791856874598571e+263,
+    "Ta": 1.7327026485143268e+266,
+    "wp": -2680802795515.545,
+    "wa": 2598971341162961400
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": -3567157657632.3887,
+    "wa": -68157841717981430000
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
+  },
+  {
+    "Tp": null,
+    "Ta": null,
+    "wp": null,
+    "wa": null
   }
-}
+]

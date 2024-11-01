@@ -1,67 +1,104 @@
 import { writeFileSync } from "fs";
-import CoolingSystemCalculator, {
-  AirProperties,
-  SystemParameters,
-  TimeInterval,
-} from "./energyCalcs/coolingSystemCalculator.js";
+import { CubeParameters, SystemState } from "./energyCalcs/cube/cube.types.js";
+import { Cube } from "./energyCalcs/cube/cube.js";
 
-// Convert 60°F to Celsius: (60°F - 32) * 5/9 = 15.56°C
-const strawberryParameters: SystemParameters = {
-  // Basic respiration and thermal parameters
-  rRef: 0.0162, // kg CO₂/kg·h (Reference respiration rate at 5°C for strawberries)
-  k: 0.112, // 1/°C (Temperature coefficient for strawberry respiration)
-  tRef: 5, // °C (Reference temperature for respiration measurements)
-  hResp: 9200, // J/kg CO₂ (Heat of respiration for strawberries)
-  mass: 860, // kg (Given mass of strawberries)
-  specificHeat: 3950, // J/kg·°C (Specific heat capacity of strawberries)
-  tInitial: 15.56, // °C (Given: converted from 60°F)
-  tTarget: 2, // °C (Optimal storage temperature for strawberries)
-  eRate: 1200000, // J/°C·h (Energy rate coefficient for typical cooling system)
+export const strawberryParameters: CubeParameters = {
+  dimensions: {
+    // Dimensions to achieve 3m³ total volume
+    length: 1.442,
+    width: 1.442,
+    height: 1.442,
+  },
 
-  // Heat transfer parameters
-  surfaceArea: 172, // m² (Estimated: ~0.2 m² per kg for packed strawberries)
-  heatTransferCoeff: 28, // W/m²·K (Typical for forced air cooling of berries)
-  airVelocity: 1.5, // m/s (Recommended air velocity for strawberry cooling)
-  relativeHumidity: 90, // % (Recommended humidity for strawberry storage)
-  ambientTemp: 4, // °C (Typical cold storage room temperature)
+  packingProperties: {
+    // Typical values for field packed strawberries in plastic clamshells
+    // stacked on pallets
+    voidFraction: 0.45, // 45% air space considering packaging and stacking
+    bulkDensity: 250, // kg/m³, accounts for product, packaging, and air spaces
+    specificSurfaceArea: 85, // m²/m³, high due to individual berry surface area
+    characteristicDimension: 0.025, // m, typical strawberry diameter
+    tortuosity: 1.8, // Moderate tortuosity due to regular packing pattern
+  },
 
-  // Evaporative cooling parameters
-  moistureContent: 0.908, // kg water/kg dry matter (90.8% moisture content for fresh strawberries)
-  waterActivity: 0.98, // dimensionless (Typical water activity for fresh strawberries)
-  surfaceWetness: 0.85, // dimensionless (Surface wetness factor for fresh berries)
-  productPorosity: 0.07, // dimensionless (Typical porosity for strawberry tissue)
-  massDiffusivity: 1.8e-9, // m²/s (Effective mass diffusivity in strawberry tissue)
-  latentHeat: 2.45e6, // J/kg (Latent heat of vaporization at average temperature)
+  productProperties: {
+    // Values specific to fresh strawberries
+    cp: 3900, // J/kg·K, specific heat capacity of strawberries
+    wpInitial: 0.92, // Initial moisture content (92% wet basis)
+    rRef: 0.0086, // W/kg, reference respiration rate at 20°C
+    k: 0.0867, // Temperature coefficient for respiration
+    Tref: 20, // °C, reference temperature for respiration
+    aw: 0.98, // Water activity of fresh strawberries
+    trueDensity: 920, // kg/m³, density of strawberry tissue
+  },
 
-  // Air volume parameters
-  roomVolume: 12.47, // m³ (Total storage room volume)
-  freeAirSpace: 4.49, // m³ (Available air space = roomVolume - product volume)
-  airExchangeRate: 30, // 1/h (Air changes per hour)
-  airflowRate: undefined, // m³/h (Volumetric air flow rate)
-  productStacking: 0.75, // dimensionless (Stacking factor affecting air flow)
-  ventEfficiency: 0.6, // dimensionless (0-1, Ventilation efficiency factor)
+  systemProperties: {
+    // Forced-air cooling system properties
+    h0: 25, // W/m²·K, base heat transfer coefficient
+    mAirFlow: 0.75, // kg/s, (~2250 m³/hr for 3m³ space)
+    PcoolRated: 8000, // W, cooling capacity
+    Tdp: 2, // °C, dew point temperature
+    pressure: 101325, // Pa, standard atmospheric pressure
+  },
+
+  controlParams: {
+    // Control system tuning for optimal cooling uniformity
+    alpha: 0.15, // Moderate turbulence sensitivity
+    beta: 0.25, // Energy factor coefficient
+    gamma: 0.12, // Variance penalty factor
+    TCPITarget: 0.85, // Target cooling performance index
+  },
 };
 
-const timeInterval: TimeInterval = {
-  t0: 0, // start time (hours)
-  t1: 5, // end time (hours)
-  dt: 1 / 12, // 5 minutes expressed in hours (0.0833... hours)
+/**
+ * Typical initial conditions for field-harvested strawberries
+ */
+export const startingConditions: SystemState = {
+  Tp: 25, // °C, typical field temperature
+  Ta: 25, // °C, starting air temperature
+  wp: 0.92, // kg/kg, initial product moisture content
+  wa: 0.008, // kg/kg, initial air humidity ratio at ~25°C, 50% RH
 };
 
-const airProperties: AirProperties = {
-  density: 1.225, // kg/m³
-  specificHeat: 1005, // J/kg·K
-  thermalConductivity: 0.024, // W/m·K
-  viscosity: 1.81e-5, // Pa·s
-  diffusivity: 2.2e-5, // m²/s
+/**
+ * Recommended operating conditions
+ */
+export const operatingConditions = {
+  targetTemperature: 4, // °C, optimal storage temperature
+  maxDuration: 10800, // seconds (3 hours max for precooling)
+  maxMoistureTargetLoss: 0.02, // Maximum 2% moisture loss target
+  optimalRelativeHumidity: 0.9, // 90% RH target in storage
 };
 
-const calculator = new CoolingSystemCalculator(
-  airProperties,
-  strawberryParameters,
-  timeInterval
-);
+/**
+ * Parameter justifications and sources:
+ *
+ * 1. Void Fraction & Bulk Density:
+ *    - Based on typical commercial strawberry clamshell packaging
+ *    - Accounts for spacing between crates and pallet arrangement
+ *
+ * 2. Heat Transfer Parameters:
+ *    - h0: Derived from typical forced-air cooling studies
+ *    - Specific surface area: Calculated from average berry size and packing density
+ *
+ * 3. Respiration Parameters:
+ *    - Based on published data for strawberry respiration rates
+ *    - Temperature coefficient matched to observed respiration behavior
+ *
+ * 4. Moisture Content:
+ *    - Initial value typical for fresh harvested strawberries
+ *    - Water activity typical for ripe berries
+ *
+ * 5. System Specifications:
+ *    - Airflow rate designed for approximately 750 CFM per ton of product
+ *    - Cooling capacity sized for typical 7/8 cooling time of 1.5-2 hours
+ *
+ * 6. Control Parameters:
+ *    - Tuned for balance between cooling speed and uniformity
+ *    - TCPI target based on optimal energy efficiency while maintaining cooling rate
+ */
+const cube = new Cube(strawberryParameters, startingConditions);
 
-const result = calculator.calculate();
+// Simulate for 3 hours with 60-second intervals
+const states = cube.simulate(3600 * 3);
 
-writeFileSync("./output.json", JSON.stringify(result, undefined, 2));
+writeFileSync("./output.json", JSON.stringify(states, undefined, 2));
