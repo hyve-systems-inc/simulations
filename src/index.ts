@@ -4,17 +4,16 @@ import { Cube } from "./energyCalcs/cube/cube.js";
 
 export const strawberryParameters: CubeParameters = {
   dimensions: {
-    // Dimensions to achieve 3m³ total volume
-    length: 1.442,
-    width: 1.442,
-    height: 1.442,
+    length: 3,
+    width: 3,
+    height: 3,
   },
 
   packingProperties: {
     // Typical values for field packed strawberries in plastic clamshells
     // stacked on pallets
-    voidFraction: 0.45, // 45% air space considering packaging and stacking
-    bulkDensity: 250, // kg/m³, accounts for product, packaging, and air spaces
+    voidFraction: 0.25, // 45% air space considering packaging and stacking
+    bulkDensity: 150, // kg/m³, accounts for product, packaging, and air spaces
     specificSurfaceArea: 85, // m²/m³, high due to individual berry surface area
     characteristicDimension: 0.025, // m, typical strawberry diameter
     tortuosity: 1.8, // Moderate tortuosity due to regular packing pattern
@@ -34,8 +33,8 @@ export const strawberryParameters: CubeParameters = {
   systemProperties: {
     // Forced-air cooling system properties
     h0: 25, // W/m²·K, base heat transfer coefficient
-    mAirFlow: 0.75, // kg/s, (~2250 m³/hr for 3m³ space)
-    PcoolRated: 8000, // W, cooling capacity
+    mAirFlow: 10, // kg/s, (~2250 m³/hr for 3m³ space)
+    PcoolRated: 26376, // W, cooling capacity
     Tdp: 2, // °C, dew point temperature
     pressure: 101325, // Pa, standard atmospheric pressure
   },
@@ -98,7 +97,12 @@ export const operatingConditions = {
  */
 const cube = new Cube(strawberryParameters, startingConditions);
 
-// Simulate for 3 hours with 60-second intervals
-const states = cube.simulate(3600 * 3);
-
-writeFileSync("./output.json", JSON.stringify(states, undefined, 2));
+const metrics = cube.getMetrics();
+const state = cube.getCurrentState();
+console.log(metrics, state);
+let i = 0;
+while (i < 10) {
+  const newState = cube.nextState();
+  console.log(newState);
+  i += 1;
+}

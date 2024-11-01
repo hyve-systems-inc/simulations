@@ -167,5 +167,5 @@ export interface SystemMetrics {
   averageAirVelocity: number;
 
   /** Pressure drop across the packed bed in Pascals (Pa) */
-  // pressureDrop: number;
+  pressureDrop: number;
 }

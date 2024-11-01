@@ -1,10 +1,17 @@
 import { SystemState, CubeParameters, SystemMetrics } from "./cube.types.js";
 
+/**
+ * Implements a mathematical model of a refrigerated container cooling system
+ * See Section I of the mathematical model for system overview
+ */
 export class Cube {
   private readonly params: CubeParameters;
   private readonly metrics: SystemMetrics;
   private currentState: SystemState;
-  private readonly dt: number = 60; // Time step in seconds
+  private readonly dt: number = 1; // Timestep in seconds for numerical stability (Section VII.1)
+  private readonly airDensity: number = 1.225; // Air density in kg/m³ at 15°C
+  private readonly airCp: number = 1006; // Air specific heat capacity in J/kg·K
+  private readonly airViscosity: number = 1.81e-5; // Air dynamic viscosity in Pa·s at 15°C
 
   constructor(params: CubeParameters, initialState: SystemState) {
     this.params = params;
@@ -13,9 +20,10 @@ export class Cube {
   }
 
   /**
-   * Simulates the cooling process for a specified duration
-   * @param duration Duration in seconds
-   * @returns Array of system states over time
+   * Simulates the system evolution over a specified duration
+   * Implements the time discretization scheme from Section VII.1
+   * @param duration - Time to simulate in seconds
+   * @returns Array of system states at each timestep
    */
   public simulate(duration: number): SystemState[] {
     const timeSteps = Math.floor(duration / this.dt);
@@ -29,63 +37,60 @@ export class Cube {
     return states;
   }
 
+  /**
+   * Calculates system metrics based on physical parameters
+   * Implements equations from Section I.1 and VIII
+   * @returns SystemMetrics object containing calculated values
+   */
   private calculateSystemMetrics(): SystemMetrics {
     const {
       dimensions,
-      packingProperties,
+      packingProperties: pack,
       systemProperties: sys,
     } = this.params;
     const totalVolume =
-      dimensions.length * dimensions.width * dimensions.height;
-    const productVolume = totalVolume * (1 - packingProperties.voidFraction);
-    const airVolume = totalVolume * packingProperties.voidFraction;
-    const averageAirVelocity = sys.mAirFlow / (1.225 * airVolume);
+      dimensions.length * dimensions.width * dimensions.height; // m³
+    const productVolume = totalVolume * (1 - pack.voidFraction); // m³
+    const airVolume = totalVolume * pack.voidFraction; // m³
+    const averageAirVelocity = sys.mAirFlow / (this.airDensity * airVolume); // m/s
 
     return {
       totalVolume,
       productVolume,
       airVolume,
-      productMass: productVolume * packingProperties.bulkDensity,
-      heatTransferArea: totalVolume * packingProperties.specificSurfaceArea,
+      productMass: productVolume * pack.bulkDensity, // kg
+      heatTransferArea: totalVolume * pack.specificSurfaceArea, // m²
       averageAirVelocity,
-      //   pressureDrop: this.calculatePressureDrop(),
+      pressureDrop: this.calculatePressureDrop(averageAirVelocity), // Pa
     };
   }
 
+  /**
+   * Updates system state using conservation equations
+   * Implements energy and mass conservation from Section II
+   */
   private updateState(): void {
-    const { productProperties: prop, systemProperties: sys } = this.params;
+    const h = this.calculateHeatTransferCoefficient(); // W/m²·K
 
-    // Calculate heat transfer coefficients
-    const TCPI = this.calculateTCPI();
-    const h = sys.h0 * TCPI * this.calculateReynoldsEffect();
+    // Calculate heat fluxes (all in Watts)
+    const Qresp = this.calculateRespirationHeat(); // Section III.1
+    const Qconv = this.calculateConvectiveHeat(h); // Section III.2
+    const { Qevap, mevap } = this.calculateEvaporativeCooling(h); // Section III.3
+    const Qcool = this.calculateCoolingEffect(); // Section V
 
-    // Calculate respiration heat
-    const Qresp = this.calculateRespirationHeat();
-
-    // Calculate convective heat transfer
-    const Qconv = this.calculateConvectiveHeat(h);
-
-    // Calculate evaporative cooling
-    const { Qevap, mevap } = this.calculateEvaporativeCooling(h);
-
-    // Calculate cooling unit effect
-    const Qcool = this.calculateCoolingEffect();
-
-    // Update product temperature
+    // Temperature changes (°C) from energy conservation (Section II.1)
     const dTp =
-      ((Qresp - Qconv - Qevap) / (this.metrics.productMass * prop.cp)) *
-      this.dt;
-
-    // Update air temperature
+      ((Qresp - Qconv - Qevap) * this.dt) /
+      (this.metrics.productMass * this.params.productProperties.cp);
     const dTa =
-      ((Qconv - Qcool) / (this.calculateAirMass() * this.calculateAirCp())) *
-      this.dt;
+      ((Qconv - Qcool) * this.dt) / (this.calculateAirMass() * this.airCp);
 
-    // Update moisture contents
-    const dwp = (-mevap / this.metrics.productMass) * this.dt;
-    const dwa = this.calculateAirMoistureChange(mevap) * this.dt;
+    // Moisture content changes (kg water/kg matter) from mass conservation (Section II.2)
+    const dwp = (-mevap * this.dt) / this.metrics.productMass;
+    const dwa =
+      ((mevap - this.calculateDehumidification()) * this.dt) /
+      this.calculateAirMass();
 
-    // Apply changes
     this.currentState = {
       Tp: this.currentState.Tp + dTp,
       Ta: this.currentState.Ta + dTa,
@@ -94,24 +99,42 @@ export class Cube {
     };
   }
 
-  private calculateTCPI(): number {
-    const { controlParams: ctrl } = this.params;
-    const turbIntensity = this.calculateTurbulenceIntensity();
-    const coolingEfficiency = this.calculateCoolingEfficiency();
-    const energyFactor = 1 + ctrl.beta * Math.pow(turbIntensity, 2);
-
+  /**
+   * Calculates convective heat transfer coefficient
+   * Implements equations from Section III.2 and IV
+   * @returns Heat transfer coefficient in W/m²·K
+   */
+  private calculateHeatTransferCoefficient(): number {
+    const Re = this.calculateReynoldsNumber();
+    const Pr = (this.airCp * this.airViscosity) / 0.0257; // Prandtl number
     return (
-      (coolingEfficiency / energyFactor) *
-      (1 - ctrl.gamma * this.calculateCoolingVariance())
+      this.params.systemProperties.h0 *
+      this.calculateTCPI() *
+      Math.pow(Re, 0.8) *
+      Math.pow(Pr, 1 / 3)
     );
   }
 
+  /**
+   * Calculates heat generation from product respiration
+   * Implements equations from Section III.1
+   * @returns Respiration heat in Watts
+   */
   private calculateRespirationHeat(): number {
     const { productProperties: prop } = this.params;
-    const R = prop.rRef * Math.exp(prop.k * (this.currentState.Tp - prop.Tref));
-    return R * this.metrics.productMass;
+    return (
+      prop.rRef *
+      Math.exp(prop.k * (this.currentState.Tp - prop.Tref)) *
+      this.metrics.productMass
+    );
   }
 
+  /**
+   * Calculates convective heat transfer between product and air
+   * Implements equations from Section III.2
+   * @param h - Heat transfer coefficient in W/m²·K
+   * @returns Convective heat transfer rate in Watts
+   */
   private calculateConvectiveHeat(h: number): number {
     return (
       h *
@@ -120,149 +143,210 @@ export class Cube {
     );
   }
 
+  /**
+   * Calculates evaporative cooling effect and mass transfer
+   * Implements equations from Section III.3
+   * @param h - Heat transfer coefficient in W/m²·K
+   * @returns Object containing evaporative cooling rate (W) and mass transfer rate (kg/s)
+   */
   private calculateEvaporativeCooling(h: number): {
     Qevap: number;
     mevap: number;
   } {
     const { productProperties: prop, systemProperties: sys } = this.params;
 
-    // Saturated vapor pressure calculation (Magnus formula)
+    // Calculate vapor pressure deficit (Pa)
     const psat = (T: number) => 610.78 * Math.exp((17.27 * T) / (T + 237.3));
-
     const VPD =
       psat(this.currentState.Tp) * prop.aw -
       (this.currentState.wa * sys.pressure) / (0.622 + this.currentState.wa);
 
-    // Mass transfer coefficient (Lewis relation)
-    const hm = h / (this.calculateAirCp() * 1.006);
+    // Mass transfer coefficient (m/s) from heat and mass transfer analogy
+    const hm = h / (this.airCp * 1.006);
 
+    // Evaporation rate (kg/s)
     const mevap =
       (hm * this.metrics.heatTransferArea * VPD) /
       (461.5 * (this.currentState.Tp + 273.15));
 
-    const latentHeat = this.calculateLatentHeat();
-    const Qevap = mevap * latentHeat;
+    // Latent heat of vaporization (J/kg)
+    const lambda = 2.5e6 - 2.386e3 * this.currentState.Tp;
 
-    return { Qevap, mevap };
+    return {
+      Qevap: mevap * lambda,
+      mevap: mevap,
+    };
   }
 
-  private calculateCoolingEffect(): number {
+  /**
+   * Calculates dehumidification rate in cooling unit
+   * Implements equations from Section V.2
+   * @returns Dehumidification rate in kg/s
+   */
+  private calculateDehumidification(): number {
     const { systemProperties: sys } = this.params;
-    const mair = this.calculateAirMass();
-    const cp = this.calculateAirCp();
-
-    const Qsensible = mair * cp * (this.currentState.Ta - sys.Tdp);
-
-    // Dehumidification effect
     const wsat = this.calculateSaturatedHumidity(sys.Tdp);
+
+    // Sigmoid function for smooth transition
     const sigma = (x: number) => 0.5 * (1 + Math.tanh(8 * x));
 
-    const mdehum =
-      mair *
+    return (
+      this.calculateAirMass() *
       (this.currentState.wa - wsat) *
       sigma((this.currentState.Ta - sys.Tdp) / 0.2) *
-      sigma((this.currentState.wa - wsat) / 0.00005);
+      sigma((this.currentState.wa - wsat) / 0.00005)
+    );
+  }
 
-    const Qlatent = mdehum * this.calculateLatentHeat();
+  /**
+   * Calculates total cooling effect including sensible and latent cooling
+   * Implements equations from Section V.3
+   * @returns Total cooling power in Watts
+   */
+  private calculateCoolingEffect(): number {
+    const { systemProperties: sys } = this.params;
+    const airMass = this.calculateAirMass();
+
+    // Sensible cooling (W)
+    const Qsensible = airMass * this.airCp * (this.currentState.Ta - sys.Tdp);
+
+    // Latent cooling from dehumidification (W)
+    const mdehum = this.calculateDehumidification();
+    const Qlatent = mdehum * 2.5e6;
 
     return Math.min(sys.PcoolRated, Qsensible + Qlatent);
   }
 
-  // Helper methods
-  private calculateAirMass(): number {
-    return this.metrics.airVolume * 1.225; // Approximate air density at 15°C
+  /**
+   * Calculates pressure drop across packed bed
+   * Implements Ergun equation from Section IV.3
+   * @param airVelocity - Air velocity in m/s
+   * @returns Pressure drop in Pa
+   */
+  private calculatePressureDrop(airVelocity: number): number {
+    const { packingProperties: pack } = this.params;
+
+    const viscousTerm =
+      (150 *
+        this.airViscosity *
+        Math.pow(1 - pack.voidFraction, 2) *
+        airVelocity) /
+      (Math.pow(pack.characteristicDimension, 2) *
+        Math.pow(pack.voidFraction, 3));
+
+    const inertiaTerm =
+      (1.75 *
+        this.airDensity *
+        (1 - pack.voidFraction) *
+        Math.pow(airVelocity, 2)) /
+      (pack.characteristicDimension * Math.pow(pack.voidFraction, 3));
+
+    return (viscousTerm + inertiaTerm) * this.params.dimensions.height;
   }
 
-  private calculateAirCp(): number {
-    return 1006; // J/kg·K for dry air
-  }
-
-  private calculateLatentHeat(): number {
-    return 2500000; // J/kg at 0°C (approximate)
-  }
-
-  private calculateReynoldsEffect(): number {
-    const Re =
+  /**
+   * Calculates Reynolds number for flow characterization
+   * Implements equation from Section IV.1
+   * @returns Reynolds number (dimensionless)
+   */
+  private calculateReynoldsNumber(): number {
+    return (
       (this.metrics.averageAirVelocity *
         this.params.packingProperties.characteristicDimension *
-        1.225) /
-      1.81e-5; // Air viscosity at 15°C
-    return Math.pow(Re, 0.8);
-  }
-
-  private calculateTurbulenceIntensity(): number {
-    const Re = this.calculateReynoldsEffect();
-    return 0.16 * Math.pow(Re, -0.125);
-  }
-
-  private calculateCoolingEfficiency(): number {
-    const NTU = this.calculateNTU();
-    return 1 - Math.exp(-NTU);
-  }
-
-  private calculateNTU(): number {
-    const { systemProperties: sys } = this.params;
-    return (
-      (sys.h0 * this.metrics.heatTransferArea) /
-      (sys.mAirFlow * this.calculateAirCp())
+        this.airDensity) /
+      this.airViscosity
     );
   }
 
+  /**
+   * Calculates Turbulent Cooling Performance Index
+   * Implements equations from Section VI.1
+   * @returns TCPI value (dimensionless)
+   */
+  private calculateTCPI(): number {
+    const { controlParams: ctrl } = this.params;
+    const turbIntensity = this.calculateTurbulenceIntensity();
+    const eta = this.calculateCoolingEfficiency();
+
+    return (
+      (eta / (1 + ctrl.beta * Math.pow(turbIntensity, 2))) *
+      (1 - ctrl.gamma * this.calculateCoolingVariance())
+    );
+  }
+
+  /**
+   * Calculates turbulence intensity
+   * Implements equation from Section IV.1
+   * @returns Turbulence intensity (dimensionless)
+   */
+  private calculateTurbulenceIntensity(): number {
+    const Re = this.calculateReynoldsNumber();
+    return 0.16 * Math.pow(Re, -0.125);
+  }
+
+  /**
+   * Calculates cooling efficiency
+   * Implements equation from Section VI.1
+   * @returns Cooling efficiency (dimensionless)
+   */
+  private calculateCoolingEfficiency(): number {
+    return 1 - Math.exp(-this.calculateNTU());
+  }
+
+  /**
+   * Calculates Number of Transfer Units
+   * Referenced in Section VI.1
+   * @returns NTU value (dimensionless)
+   */
+  private calculateNTU(): number {
+    const { systemProperties: sys } = this.params;
+    return (
+      (sys.h0 * this.metrics.heatTransferArea) / (sys.mAirFlow * this.airCp)
+    );
+  }
+
+  /**
+   * Calculates cooling variance for TCPI calculation
+   * Part of Section VI.1
+   * @returns Cooling variance (dimensionless)
+   */
   private calculateCoolingVariance(): number {
-    // Simplified variance calculation based on temperature distribution
     return (
       Math.abs(this.currentState.Tp - this.currentState.Ta) /
       Math.max(1, this.currentState.Tp)
     );
   }
 
-  //   private calculateAverageAirVelocity(): number {
-  //     const { systemProperties: sys } = this.params;
-  //     return sys.mAirFlow / (1.225 * this.metrics.airVolume);
-  //   }
-
-  //   private calculatePressureDrop(): number {
-  //     const velocity = this.calculateAverageAirVelocity();
-  //     const { packingProperties: pack } = this.params;
-
-  //     // Ergun equation for pressure drop in packed beds
-  //     const mu = 1.81e-5; // Air viscosity
-  //     const rho = 1.225; // Air density
-
-  //     return (
-  //       ((150 *
-  //         mu *
-  //         (1 - pack.voidFraction) *
-  //         (1 - pack.voidFraction) *
-  //         velocity) /
-  //         (pack.characteristicDimension *
-  //           pack.characteristicDimension *
-  //           pack.voidFraction *
-  //           pack.voidFraction *
-  //           pack.voidFraction) +
-  //         (1.75 * rho * (1 - pack.voidFraction) * velocity * velocity) /
-  //           (pack.characteristicDimension *
-  //             pack.voidFraction *
-  //             pack.voidFraction *
-  //             pack.voidFraction)) *
-  //       this.params.dimensions.height
-  //     );
-  //   }
-
+  /**
+   * Calculates saturated humidity ratio
+   * Used in Section V.2 calculations
+   * @param T - Temperature in °C
+   * @returns Saturated humidity ratio in kg water/kg dry air
+   */
   private calculateSaturatedHumidity(T: number): number {
-    // Simplified calculation of saturated humidity ratio
     const psat = 610.78 * Math.exp((17.27 * T) / (T + 237.3));
     return (0.622 * psat) / (this.params.systemProperties.pressure - psat);
   }
 
-  private calculateAirMoistureChange(mevap: number): number {
-    const { systemProperties: sys } = this.params;
-    const wsat = this.calculateSaturatedHumidity(sys.Tdp);
+  /**
+   * Calculates mass of air in system
+   * @returns Air mass in kg
+   */
+  private calculateAirMass(): number {
+    return this.metrics.airVolume * this.airDensity;
+  }
 
-    // Net moisture change considering evaporation and dehumidification
-    return (
-      (mevap - sys.mAirFlow * (this.currentState.wa - wsat)) /
-      this.calculateAirMass()
-    );
+  // Public methods for accessing metrics and state
+  public getMetrics(): SystemMetrics {
+    return { ...this.metrics };
+  }
+
+  public getCurrentState(): SystemState {
+    return { ...this.currentState };
+  }
+
+  public nextState(): SystemState {
+    this.updateState();
+    return this.currentState;
   }
 }
