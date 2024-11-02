@@ -14,7 +14,7 @@ export const strawberryParameters: CubeParameters = {
     // stacked on pallets
     voidFraction: 0.25, // 45% air space considering packaging and stacking
     bulkDensity: 150, // kg/m³, accounts for product, packaging, and air spaces
-    specificSurfaceArea: 85, // m²/m³, high due to individual berry surface area
+    specificSurfaceArea: 5, // m²/m³, high due to individual berry surface area
     characteristicDimension: 0.025, // m, typical strawberry diameter
     tortuosity: 1.8, // Moderate tortuosity due to regular packing pattern
   },
@@ -33,7 +33,7 @@ export const strawberryParameters: CubeParameters = {
   systemProperties: {
     // Forced-air cooling system properties
     h0: 25, // W/m²·K, base heat transfer coefficient
-    mAirFlow: 10, // kg/s, (~2250 m³/hr for 3m³ space)
+    mAirFlow: 1, // kg/s, (~2250 m³/hr for 3m³ space)
     PcoolRated: 26376, // W, cooling capacity
     Tdp: 2, // °C, dew point temperature
     pressure: 101325, // Pa, standard atmospheric pressure
@@ -68,41 +68,26 @@ export const operatingConditions = {
   optimalRelativeHumidity: 0.9, // 90% RH target in storage
 };
 
-/**
- * Parameter justifications and sources:
- *
- * 1. Void Fraction & Bulk Density:
- *    - Based on typical commercial strawberry clamshell packaging
- *    - Accounts for spacing between crates and pallet arrangement
- *
- * 2. Heat Transfer Parameters:
- *    - h0: Derived from typical forced-air cooling studies
- *    - Specific surface area: Calculated from average berry size and packing density
- *
- * 3. Respiration Parameters:
- *    - Based on published data for strawberry respiration rates
- *    - Temperature coefficient matched to observed respiration behavior
- *
- * 4. Moisture Content:
- *    - Initial value typical for fresh harvested strawberries
- *    - Water activity typical for ripe berries
- *
- * 5. System Specifications:
- *    - Airflow rate designed for approximately 750 CFM per ton of product
- *    - Cooling capacity sized for typical 7/8 cooling time of 1.5-2 hours
- *
- * 6. Control Parameters:
- *    - Tuned for balance between cooling speed and uniformity
- *    - TCPI target based on optimal energy efficiency while maintaining cooling rate
- */
 const cube = new Cube(strawberryParameters, startingConditions);
 
 const metrics = cube.getMetrics();
 const state = cube.getCurrentState();
-console.log(metrics, state);
+const states: any[] = [];
 let i = 0;
 while (i < 10) {
   const newState = cube.nextState();
-  console.log(newState);
+  states.push(newState);
   i += 1;
 }
+
+writeFileSync(
+  "./output.json",
+  JSON.stringify(
+    {
+      startingConditions: { systemMetrics: metrics, initialState: state },
+      timeSeries: states,
+    },
+    undefined,
+    2
+  )
+);

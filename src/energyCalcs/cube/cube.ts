@@ -66,36 +66,242 @@ export class Cube {
   }
 
   /**
-   * Updates system state using conservation equations
-   * Implements energy and mass conservation from Section II
+   * Updates system state based on energy and mass balances
+   * Implements core conservation equations from Section II of mathematical model
    */
-  private updateState(): void {
-    const h = this.calculateHeatTransferCoefficient(); // W/m²·K
+  private updateState() {
+    // Calculate heat transfer coefficient (Section III.2)
+    const h = this.calculateHeatTransferCoefficient();
 
-    // Calculate heat fluxes (all in Watts)
-    const Qresp = this.calculateRespirationHeat(); // Section III.1
-    const Qconv = this.calculateConvectiveHeat(h); // Section III.2
-    const { Qevap, mevap } = this.calculateEvaporativeCooling(h); // Section III.3
-    const Qcool = this.calculateCoolingEffect(); // Section V
+    // Calculate all heat flows
+    // Section III.1: Heat from respiration
+    const Qresp = this.calculateRespirationHeat();
 
-    // Temperature changes (°C) from energy conservation (Section II.1)
-    const dTp =
-      ((Qresp - Qconv - Qevap) * this.dt) /
-      (this.metrics.productMass * this.params.productProperties.cp);
-    const dTa =
-      ((Qconv - Qcool) * this.dt) / (this.calculateAirMass() * this.airCp);
+    // Section III.2: Convective heat transfer
+    const Qconv = this.calculateConvectiveHeat(h);
 
-    // Moisture content changes (kg water/kg matter) from mass conservation (Section II.2)
+    // Section III.3: Evaporative cooling
+    const { Qevap, mevap } = this.calculateEvaporativeCooling(h);
+
+    /**
+     * Product energy balance (Section II.1)
+     * dE/dt = Qresp - Qconv - Qevap
+     * mcp * dT/dt = Qresp - Qconv - Qevap
+     */
+    const productMCp =
+      this.metrics.productMass * this.params.productProperties.cp;
+    const dTp = ((Qresp - Qconv - Qevap) * this.dt) / productMCp;
+
+    /**
+     * Air energy balance (Section II.1)
+     * Includes:
+     * - Convective heat from/to product
+     * - Energy from inlet air flow
+     * - Energy removal by cooling unit
+     *
+     * ma * cp * dT/dt = ṁa * cp * (Tin - T) + Qconv - Qcool
+     */
+    // Air flow energy terms
+    const mDotAir = this.params.systemProperties.mAirFlow;
+    const Tin = this.params.systemProperties.Tdp; // Inlet air temp is dew point temp
+    const Qflow = mDotAir * this.airCp * (Tin - this.currentState.Ta);
+
+    // Cooling unit power (Section V)
+    const Qcool = this.params.systemProperties.PcoolRated;
+
+    // Air temperature change
+    const airMCp = this.calculateAirMass() * this.airCp;
+    const dTa = ((Qflow + Qconv - Qcool) * this.dt) / airMCp;
+
+    /**
+     * Air moisture balance (Section II.2)
+     * dw/dt = (ṁevap - ṁdehum + ṁvent) / ma
+     */
+    const mdehum = this.calculateDehumidification();
+    const airMass = this.calculateAirMass();
+
+    // Inlet air humidity (at dew point temperature)
+    const waIn = this.calculateSaturatedHumidity(
+      this.params.systemProperties.Tdp
+    );
+    const mvent = mDotAir * (waIn - this.currentState.wa);
+
+    const dwa = ((mevap - mdehum + mvent) * this.dt) / airMass;
+
+    /**
+     * Product moisture balance (Section II.2)
+     * dw/dt = -ṁevap / mp
+     */
     const dwp = (-mevap * this.dt) / this.metrics.productMass;
-    const dwa =
-      ((mevap - this.calculateDehumidification()) * this.dt) /
-      this.calculateAirMass();
 
+    // Update state variables
     this.currentState = {
       Tp: this.currentState.Tp + dTp,
       Ta: this.currentState.Ta + dTa,
       wp: this.currentState.wp + dwp,
       wa: this.currentState.wa + dwa,
+    };
+
+    const productMass = this.metrics.productMass;
+
+    return {
+      state: this.currentState,
+      calculations: {
+        h,
+        Qresp,
+        Qconv,
+        Qevap,
+        mevap,
+        Qcool,
+        dTp,
+        dTa,
+        dwa,
+        dwp,
+        airMass,
+        productMass,
+      },
+    };
+  }
+
+  /**
+   * Calculates convective heat transfer between product and air
+   * Section III.2: Qconv,i,j = hi,j * Ap,i,j * (Tp,i,j - Ta,i)
+   *
+   * @param h Heat transfer coefficient [W/m²·K]
+   * @returns Heat transfer rate [W]
+   */
+  private calculateConvectiveHeat(h: number): number {
+    return (
+      h *
+      this.metrics.heatTransferArea *
+      (this.currentState.Tp - this.currentState.Ta)
+    );
+  }
+
+  /**
+   * Calculates dehumidification in cooling unit
+   * Section V.2
+   *
+   * @returns Dehumidification rate [kg/s]
+   */
+  private calculateDehumidification(): number {
+    const { systemProperties: sys } = this.params;
+    const wsat = this.calculateSaturatedHumidity(sys.Tdp);
+
+    // Air flow rate times humidity difference
+    return (
+      this.params.systemProperties.mAirFlow * (this.currentState.wa - wsat)
+    );
+  }
+
+  /**
+   * Calculates saturated humidity ratio at given temperature
+   * Used for psychrometric calculations
+   *
+   * @param T Temperature [°C]
+   * @returns Saturated humidity ratio [kg water/kg dry air]
+   */
+  private calculateSaturatedHumidity(T: number): number {
+    // Calculate saturation pressure using equation from Section III.3
+    const psat = 610.78 * Math.exp((17.27 * T) / (T + 237.3));
+
+    // Convert to humidity ratio
+    return (0.622 * psat) / (this.params.systemProperties.pressure - psat);
+  }
+
+  /**
+   * Calculates mass of air in system
+   * @returns Air mass [kg]
+   */
+  private calculateAirMass(): number {
+    return this.metrics.airVolume * this.airDensity;
+  }
+
+  /**
+   * Calculates evaporative cooling effect and mass transfer rate.
+   * Primary reference: Section III.3 of mathematical model
+   * Additional references:
+   * - Chilton-Colburn heat/mass transfer analogy (j_H = j_M)
+   * - ASHRAE Handbook - Fundamentals (2017) Ch.6 for psychrometric properties
+   * - Incropera's "Fundamentals of Heat and Mass Transfer" for transfer coefficients
+   *
+   * @param h - Convective heat transfer coefficient [W/(m²·K)]
+   * @returns {Object} containing:
+   *   - Qevap: Evaporative cooling power [W]
+   *   - mevap: Mass transfer rate [kg/s]
+   */
+  private calculateEvaporativeCooling(h: number): {
+    Qevap: number;
+    mevap: number;
+  } {
+    const { productProperties: prop, systemProperties: sys } = this.params;
+
+    /**
+     * Saturation vapor pressure calculation
+     * From Section III.3: psat(T) = 610.78 * exp((17.27 * T)/(T + 237.3))
+     * @param T - Temperature [°C]
+     * @returns Saturation pressure [Pa]
+     */
+    const psat = (T: number) => 610.78 * Math.exp((17.27 * T) / (T + 237.3));
+
+    /**
+     * Calculate vapor pressures at product surface and in air
+     * From Section III.3: VPD calculation
+     */
+    // At product surface [Pa]
+    const pwProduct = psat(this.currentState.Tp) * prop.aw;
+
+    // In air stream [Pa]
+    // Based on humid air gas laws: pw = (wa * p)/(0.622 + wa)
+    const pwAir =
+      (this.currentState.wa * sys.pressure) / (0.622 + this.currentState.wa);
+
+    /**
+     * Mass transfer coefficient calculation using Chilton-Colburn analogy
+     * j_H = j_M -> h/(ρ·cp) * Sc^(-2/3) = hm
+     */
+    const Sc = 0.6; // Schmidt number for water vapor in air [-]
+    // h [W/(m²·K)] / (ρ [kg/m³] * cp [J/(kg·K)]) = [m/s]
+    // Then multiply by Sc^(-2/3) [-] and density ratio [kg/m³ / (kg/m³)] = [-]
+    const hm =
+      (h / (this.airDensity * this.airCp)) *
+      Math.pow(Sc, -2 / 3) *
+      (this.airDensity * 0.001); // Unit conversion factor [m/s]
+
+    /**
+     * Mass transfer calculation
+     * From Section III.3: mevap = (hm * A * VPD)/(Rv * T)
+     */
+    const Rv = 461.5; // Gas constant for water vapor [J/(kg·K)]
+    const Tabs = this.currentState.Tp + 273.15; // Absolute temperature [K]
+
+    // Mass transfer rate calculation [kg/s]
+    // hm [m/s] * Area [m²] * pressure difference [Pa] / (Rv [J/(kg·K)] * T [K])
+    const mevap =
+      (hm * this.metrics.heatTransferArea * (pwProduct - pwAir)) / (Rv * Tabs);
+
+    /**
+     * Latent heat calculation
+     * From Section III.3: Temperature-dependent latent heat
+     */
+    // Watson equation for latent heat [J/kg]
+    const lambda = 2.5e6 - 2.386e3 * this.currentState.Tp;
+
+    /**
+     * Total evaporative cooling power
+     * From Section III.3: Qevap = mevap * λ
+     */
+    // mevap [kg/s] * lambda [J/kg] = Qevap [W]
+    const Qevap = mevap * lambda;
+
+    // Expected ranges for validation:
+    // - hm: 0.003-0.03 [m/s] for forced convection over wet surfaces
+    // - mevap: 0.01-0.1 [kg/s] for typical cooling conditions
+    // - Qevap: 25-250 [kW] for this scale system
+
+    return {
+      Qevap, // [W]
+      mevap, // [kg/s]
     };
   }
 
@@ -127,94 +333,6 @@ export class Cube {
       Math.exp(prop.k * (this.currentState.Tp - prop.Tref)) *
       this.metrics.productMass
     );
-  }
-
-  /**
-   * Calculates convective heat transfer between product and air
-   * Implements equations from Section III.2
-   * @param h - Heat transfer coefficient in W/m²·K
-   * @returns Convective heat transfer rate in Watts
-   */
-  private calculateConvectiveHeat(h: number): number {
-    return (
-      h *
-      this.metrics.heatTransferArea *
-      (this.currentState.Tp - this.currentState.Ta)
-    );
-  }
-
-  /**
-   * Calculates evaporative cooling effect and mass transfer
-   * Implements equations from Section III.3
-   * @param h - Heat transfer coefficient in W/m²·K
-   * @returns Object containing evaporative cooling rate (W) and mass transfer rate (kg/s)
-   */
-  private calculateEvaporativeCooling(h: number): {
-    Qevap: number;
-    mevap: number;
-  } {
-    const { productProperties: prop, systemProperties: sys } = this.params;
-
-    // Calculate vapor pressure deficit (Pa)
-    const psat = (T: number) => 610.78 * Math.exp((17.27 * T) / (T + 237.3));
-    const VPD =
-      psat(this.currentState.Tp) * prop.aw -
-      (this.currentState.wa * sys.pressure) / (0.622 + this.currentState.wa);
-
-    // Mass transfer coefficient (m/s) from heat and mass transfer analogy
-    const hm = h / (this.airCp * 1.006);
-
-    // Evaporation rate (kg/s)
-    const mevap =
-      (hm * this.metrics.heatTransferArea * VPD) /
-      (461.5 * (this.currentState.Tp + 273.15));
-
-    // Latent heat of vaporization (J/kg)
-    const lambda = 2.5e6 - 2.386e3 * this.currentState.Tp;
-
-    return {
-      Qevap: mevap * lambda,
-      mevap: mevap,
-    };
-  }
-
-  /**
-   * Calculates dehumidification rate in cooling unit
-   * Implements equations from Section V.2
-   * @returns Dehumidification rate in kg/s
-   */
-  private calculateDehumidification(): number {
-    const { systemProperties: sys } = this.params;
-    const wsat = this.calculateSaturatedHumidity(sys.Tdp);
-
-    // Sigmoid function for smooth transition
-    const sigma = (x: number) => 0.5 * (1 + Math.tanh(8 * x));
-
-    return (
-      this.calculateAirMass() *
-      (this.currentState.wa - wsat) *
-      sigma((this.currentState.Ta - sys.Tdp) / 0.2) *
-      sigma((this.currentState.wa - wsat) / 0.00005)
-    );
-  }
-
-  /**
-   * Calculates total cooling effect including sensible and latent cooling
-   * Implements equations from Section V.3
-   * @returns Total cooling power in Watts
-   */
-  private calculateCoolingEffect(): number {
-    const { systemProperties: sys } = this.params;
-    const airMass = this.calculateAirMass();
-
-    // Sensible cooling (W)
-    const Qsensible = airMass * this.airCp * (this.currentState.Ta - sys.Tdp);
-
-    // Latent cooling from dehumidification (W)
-    const mdehum = this.calculateDehumidification();
-    const Qlatent = mdehum * 2.5e6;
-
-    return Math.min(sys.PcoolRated, Qsensible + Qlatent);
   }
 
   /**
@@ -317,25 +435,6 @@ export class Cube {
     );
   }
 
-  /**
-   * Calculates saturated humidity ratio
-   * Used in Section V.2 calculations
-   * @param T - Temperature in °C
-   * @returns Saturated humidity ratio in kg water/kg dry air
-   */
-  private calculateSaturatedHumidity(T: number): number {
-    const psat = 610.78 * Math.exp((17.27 * T) / (T + 237.3));
-    return (0.622 * psat) / (this.params.systemProperties.pressure - psat);
-  }
-
-  /**
-   * Calculates mass of air in system
-   * @returns Air mass in kg
-   */
-  private calculateAirMass(): number {
-    return this.metrics.airVolume * this.airDensity;
-  }
-
   // Public methods for accessing metrics and state
   public getMetrics(): SystemMetrics {
     return { ...this.metrics };
@@ -345,8 +444,9 @@ export class Cube {
     return { ...this.currentState };
   }
 
-  public nextState(): SystemState {
-    this.updateState();
-    return this.currentState;
+  public nextState() {
+    const result = this.updateState();
+
+    return result;
   }
 }
