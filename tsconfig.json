@@ -2,7 +2,7 @@
   "compilerOptions": {
     "lib": ["dom", "dom.iterable", "esnext"],
     "target": "ES2023",
-    "types": ["node"],
+    "types": ["node", "mocha"],
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,

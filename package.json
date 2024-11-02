@@ -5,7 +5,8 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "mocha -r ts-node/register 'src/**/*.spec.ts'",
+    "test:watch": "mocha -r ts-node/register 'src/**/*.spec.ts' --watch --watch-files src",
     "clean": "rm -rf build",
     "build": "npm run clean && tsc",
     "start": "node build/index.js",
@@ -24,8 +25,13 @@
   },
   "devDependencies": {
     "@types/body-parser": "^1.19.5",
+    "@types/chai": "^5.0.1",
     "@types/express": "^5.0.0",
+    "@types/mocha": "^10.0.9",
     "@types/node": "^22.7.4",
+    "chai": "^5.1.2",
+    "mocha": "^10.8.2",
+    "ts-node": "^10.9.2",
     "typescript": "^5.6.3"
   }
 }
