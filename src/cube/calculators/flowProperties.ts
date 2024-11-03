@@ -29,6 +29,19 @@ const BASE_PACKING = 0.8;
 const SPECIFIC_SURFACE_AREA = 50;
 const EDGE_RESTRICTION = 1.2;
 
+// Constants from Section IV documentation
+const FLOW_CONSTANTS = {
+  DISTRIBUTION: {
+    MAX_EFFECTIVENESS: 1.0, // εmax: maximum flow distribution
+    WALL_FACTOR: 0.3, // α: wall effect reduction
+    HEIGHT_FACTOR: 2.0, // β: height effect rate
+  },
+  VELOCITY: {
+    MIN_VELOCITY: 0.1, // Minimum for effective cooling
+    MAX_VELOCITY: 5.0, // Maximum for product safety
+  },
+};
+
 /**
  * Calculate complete flow properties for a zone
  * Reference: Section IV - "Turbulent Flow Effects"
@@ -50,11 +63,7 @@ export const calculateFlowProperties = (
   const velocity = calculateVelocityProfile(position, state.airTemp, config);
   const reynoldsNumber = calculateReynoldsNumber(state, position, config);
   const turbulenceIntensity = calculateTurbulenceIntensity(reynoldsNumber);
-  const flowDistribution = calculateFlowDistribution(
-    position,
-    turbulenceIntensity,
-    config
-  );
+  const flowDistribution = calculateFlowDistribution(position, config);
 
   return {
     reynoldsNumber: significant(reynoldsNumber, precision),
@@ -187,32 +196,102 @@ export const calculateVelocityProfile = (
 };
 
 /**
- * Calculate flow distribution factor
+ * Calculate local flow distribution factor
  * Reference: Section IV, 4.3
- * Combines height, length, and lateral distribution effects
- * Enhanced by turbulence
- *
- * @param position - Zone position
- * @param turbulence - Local turbulence intensity
- * @param config - System configuration
- * @param precision - Optional decimal precision (default 3)
- * @returns Flow distribution factor (dimensionless)
+ * "εj = εmax * (1 - α*exp(-β*h/H))"
  */
 export const calculateFlowDistribution = (
   position: Position,
-  turbulence: number,
   config: ZonalConfig,
   precision: number = 3
 ): number => {
-  const heightFactor = calculateHeightDistribution(position, config);
-  const lengthFactor = calculateLengthDistribution(position, config);
-  const lateralFactor = calculateLateralDistribution(position, config);
+  // Calculate normalized height (h/H)
+  const relativeHeight = (position.j + 0.5) / config.numLayers;
 
-  const turbulenceEffect = 1 + DISTRIBUTION_FACTOR * turbulence;
+  // Get constants
+  const { MAX_EFFECTIVENESS, WALL_FACTOR, HEIGHT_FACTOR } =
+    FLOW_CONSTANTS.DISTRIBUTION;
 
-  const result = heightFactor * lengthFactor * lateralFactor * turbulenceEffect;
+  // Calculate distribution factor
+  const heightEffect =
+    1 - WALL_FACTOR * Math.exp(-HEIGHT_FACTOR * relativeHeight);
+  const result = MAX_EFFECTIVENESS * heightEffect;
+
   return significant(result, precision);
 };
+
+/**
+ * Calculate vertical profile function
+ * Reference: Section IV, 4.3
+ * "g(h/H)" - shape function for vertical velocity profile
+ */
+export const calculateVerticalProfile = (
+  position: Position,
+  config: ZonalConfig,
+  precision: number = 3
+): number => {
+  // Calculate normalized height (h/H)
+  const relativeHeight = (position.j + 0.5) / config.numLayers;
+
+  // Parabolic profile: g(h/H) = 4h/H(1-h/H)
+  // This gives zero velocity at walls and maximum at center
+  const result = 4 * relativeHeight * (1 - relativeHeight);
+
+  return significant(result, precision);
+};
+
+/**
+ * Calculate streamwise development function
+ * Reference: Section IV, 4.3
+ * "h(x/L)" - development of flow along channel
+ */
+export const calculateStreamwiseDevelopment = (
+  position: Position,
+  config: ZonalConfig,
+  precision: number = 3
+): number => {
+  // Calculate normalized distance (x/L)
+  const relativeDist = position.i / (config.numZones - 1);
+
+  // Flow development function
+  // Starts at 1.0 at inlet and adjusts based on distance
+  const result = 1.0 + relativeDist * (1 - Math.exp(-3 * relativeDist));
+
+  return significant(result, precision);
+};
+
+/**
+ * Calculate axial velocity profile
+ * Reference: Section IV, 4.3
+ * "vi,j = v0 * g(h/H) * h(x/L)"
+ */
+export const calculateAxialVelocityProfile = (
+  position: Position,
+  baseVelocity: number,
+  config: ZonalConfig,
+  precision: number = 3
+): number => {
+  // Calculate component factors
+  const distribution = calculateFlowDistribution(position, config);
+  const verticalProfile = calculateVerticalProfile(position, config);
+  const streamwiseDev = calculateStreamwiseDevelopment(position, config);
+
+  // Calculate local restriction effect
+  const restriction = calculateFlowRestriction(position, config);
+
+  // Combine all effects
+  const result =
+    (baseVelocity * distribution * verticalProfile * streamwiseDev) /
+    restriction;
+
+  // Apply physical bounds
+  const { MIN_VELOCITY, MAX_VELOCITY } = FLOW_CONSTANTS.VELOCITY;
+  return significant(
+    Math.min(Math.max(result, MIN_VELOCITY), MAX_VELOCITY),
+    precision
+  );
+};
+
 /**
  *
  * HELPER FUNCTIONS
@@ -243,30 +322,6 @@ export const calculateBaseVelocity = (
     MIN_VELOCITY,
     Math.min(MAX_VELOCITY, massFlowRate / (density * crossSection))
   );
-  return significant(result, precision);
-};
-
-/**
- * Calculate axial velocity profile
- * Reference: Section IV, 4.3
- * Accounts for flow development and local restrictions
- *
- * @param position - Zone position
- * @param baseVelocity - Base flow velocity (m/s)
- * @param config - System configuration
- * @param precision - Optional decimal precision (default 3)
- * @returns Axial velocity component (m/s)
- */
-export const calculateAxialVelocityProfile = (
-  position: Position,
-  baseVelocity: number,
-  config: ZonalConfig,
-  precision: number = 3
-): number => {
-  const developmentFactor = 1 - Math.exp((-3 * position.i) / config.numZones);
-  const restrictionFactor = calculateFlowRestriction(position, config);
-
-  const result = (baseVelocity * developmentFactor) / restrictionFactor;
   return significant(result, precision);
 };
 

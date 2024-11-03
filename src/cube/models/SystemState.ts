@@ -113,14 +113,9 @@ export class SystemStateManager {
         for (let k = 0; k < this.config.numPallets; k++) {
           const pos = new Position(i, j, k);
           const state = this.getState(pos);
-
           const re = flow.calculateReynoldsNumber(state, pos, this.config);
-          const turbulence = flow.calculateTurbulenceIntensity(re);
-          const distribution = flow.calculateFlowDistribution(
-            pos,
-            turbulence,
-            this.config
-          );
+          const turbulence = flow.calculateTurbulenceIntensity(re, undefined);
+          const distribution = flow.calculateFlowDistribution(pos, this.config);
 
           auxVars.set(pos.toString(), {
             reynoldsNumber: re,
