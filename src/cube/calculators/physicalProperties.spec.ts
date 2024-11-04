@@ -567,7 +567,7 @@ describe("Physical Property Calculations", () => {
       const temp = 20;
       const props = getProperties(temp);
 
-      expect(props.airDensity).to.equal(calculateDensity(temp, 4));
+      expect(props.airDensity).to.equal(calculateDensity(temp, undefined, 4));
       expect(props.airViscosity).to.equal(calculateViscosity(temp));
       expect(props.thermalConductivity).to.equal(
         calculateThermalConductivity(temp, 5)

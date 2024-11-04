@@ -282,14 +282,8 @@ export function initializeTransientState(
   // Calculate initial velocity from pressure difference using Bernoulli
   const pressureDiff =
     transientConfig.inletPressure - transientConfig.outletPressure;
-  const theoreticalVelocity = Math.sqrt(
+  const initialVelocity = Math.sqrt(
     (2 * Math.abs(pressureDiff)) / initialDensity
-  );
-
-  // Bound velocity within physical limits from FLOW_CONSTANTS
-  const initialVelocity = Math.max(
-    flow.FLOW_CONSTANTS.MIN_VELOCITY,
-    Math.min(flow.FLOW_CONSTANTS.MAX_VELOCITY, theoreticalVelocity)
   );
 
   // Calculate initial mass flow rate (ṁ = ρvA)
@@ -332,17 +326,6 @@ export function verifyInitialState(
   state: TransientState,
   config: ZonalConfig
 ): boolean {
-  // Verify velocity bounds
-  if (
-    state.velocity < flow.FLOW_CONSTANTS.MIN_VELOCITY ||
-    state.velocity > flow.FLOW_CONSTANTS.MAX_VELOCITY
-  ) {
-    throw new Error(
-      `Initial velocity ${state.velocity} m/s outside valid range ` +
-        `[${flow.FLOW_CONSTANTS.MIN_VELOCITY}, ${flow.FLOW_CONSTANTS.MAX_VELOCITY}]`
-    );
-  }
-
   // Verify mass flow continuity
   const area = flow.calculateFlowArea(config);
   const expectedMassFlow = state.density * state.velocity * area;

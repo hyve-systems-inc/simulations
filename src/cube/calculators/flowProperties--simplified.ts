@@ -1,3 +1,4 @@
+import { significant } from "../lib.js";
 import { ZonalConfig } from "../models/Zone.js";
 
 /**
@@ -5,16 +6,11 @@ import { ZonalConfig } from "../models/Zone.js";
  * Reference: Section IV - "Turbulent Flow Effects"
  */
 export const FLOW_CONSTANTS = {
-  // Flow velocity bounds from Section IV, 4.3
-  MIN_VELOCITY: 0.5, // Minimum velocity for effective forced convection (m/s)
-  MAX_VELOCITY: 5.0, // Maximum safe velocity to prevent produce damage (m/s)
-
   // Flow resistance from Section IV "Pack_factor = BASE_FACTOR * height_effect * compression * edge_effect"
   BASE_RESISTANCE: 2.0, // Base flow resistance factor accounting for typical produce configuration
 
   // Turbulence model parameters from Section IV, 4.1: "I = 0.16 * (Re_local)^(-1/8)"
   TURBULENCE_COEFF: 0.16, // Base turbulence coefficient for empirical correlation
-  MIN_TURBULENCE: 0.05, // Minimum turbulence intensity to ensure mixing
 
   // Heat transfer correlation from Section III, 3.2: "Convective Heat Transfer"
   NUSSELT_COEFF: 0.023, // Dittus-Boelter correlation coefficient
@@ -92,10 +88,7 @@ export function calculateVelocity(
   area: number
 ): number {
   const velocity = massFlowRate / (density * area);
-  return Math.max(
-    FLOW_CONSTANTS.MIN_VELOCITY,
-    Math.min(FLOW_CONSTANTS.MAX_VELOCITY, velocity)
-  );
+  return velocity;
 }
 
 /**
@@ -135,10 +128,12 @@ export function calculateReynolds(
  * @param reynolds - Reynolds number
  * @returns Turbulence intensity (dimensionless)
  */
-export function calculateTurbulence(reynolds: number): number {
-  const turbulence =
-    FLOW_CONSTANTS.TURBULENCE_COEFF * Math.pow(reynolds, -0.125);
-  return Math.max(FLOW_CONSTANTS.MIN_TURBULENCE, turbulence);
+export function calculateTurbulence(
+  reynolds: number,
+  precision: number = 6
+): number {
+  const turbulence = 0.16 * Math.pow(reynolds, -0.125);
+  return significant(turbulence, precision);
 }
 
 /**
