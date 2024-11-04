@@ -19,7 +19,6 @@ export function significant(num: number, sigFigs?: number): number {
 
   // Validate inputs
   if (!Number.isFinite(num)) {
-    console.log(num);
     throw new Error("Input must be a finite number");
   }
   if (!Number.isInteger(sigFigs) || sigFigs <= 0) {

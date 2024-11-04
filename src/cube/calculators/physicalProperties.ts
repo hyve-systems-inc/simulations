@@ -6,24 +6,38 @@ const STANDARD_PRESSURE = 101325; // Pa
 const R_AIR = 287.058; // J/(kg·K)
 
 /**
- * Calculate air density at given temperature
+ * Calculate air density at given temperature and pressure
  * Reference: Section II, 2.1 - Used in Reynolds number calculation
  * Section IV, 4.1: "ρ [kg/m³]: Range: 1.1-1.3 kg/m³"
  *
+ * Physical basis - Ideal Gas Law:
+ * ρ = P/(RT)
+ * where:
+ * - P = absolute pressure (Pa)
+ * - R = specific gas constant for air (287.058 J/kg·K)
+ * - T = absolute temperature (K)
+ *
  * @param temperature - Air temperature (°C)
+ * @param pressure - Absolute pressure (Pa), defaults to standard atmospheric pressure
  * @param precision - Number of significant figures (default 4 based on typical sensor accuracy)
  * @returns Density (kg/m³)
+ * @throws Error if temperature is below absolute zero or pressure is non-positive
  */
 export const calculateDensity = (
   temperature: number,
-  precision: number = 4
+  pressure: number = STANDARD_PRESSURE,
+  precision: number = 6
 ): number => {
   if (temperature < -ABSOLUTE_ZERO) {
     throw new Error("Temperature cannot be below absolute zero");
   }
 
+  if (pressure <= 0) {
+    throw new Error("Pressure must be positive");
+  }
+
   const T = temperature + ABSOLUTE_ZERO;
-  const result = STANDARD_PRESSURE / (R_AIR * T);
+  const result = pressure / (R_AIR * T);
   return significant(result, precision);
 };
 
@@ -72,7 +86,7 @@ export const calculateThermalConductivity = (
  * "cp,air: Range: ~1006 J/kg·K"
  *
  * @param temperature - Air temperature (°C)
- * @param precision - Number of significant figures (default 3 based on typical variation)
+ * @param precision - Number of significant figures (default 6 based on typical variation)
  * @returns Specific heat (J/(kg·K))
  */
 export const calculateSpecificHeat = (
@@ -95,13 +109,23 @@ export const calculateSpecificHeat = (
 export const calculateDiffusivity = (
   temperature: number,
   precision: number = 3
-): number => {
-  const k = calculateThermalConductivity(temperature, undefined);
-  const rho = calculateDensity(temperature, undefined);
-  const cp = calculateSpecificHeat(temperature, undefined);
+): {
+  diffusivity: number;
+  thermalConductivity: number;
+  airDensity: number;
+  specificHeat: number;
+} => {
+  const k = calculateThermalConductivity(temperature, 5);
+  const rho = calculateDensity(temperature, undefined, 4);
+  const cp = calculateSpecificHeat(temperature, 6);
 
   const result = k / (rho * cp);
-  return significant(result, precision);
+  return {
+    diffusivity: significant(result, precision),
+    thermalConductivity: k,
+    airDensity: rho,
+    specificHeat: cp,
+  };
 };
 
 /**
@@ -131,18 +155,11 @@ export const calculateSaturationPressure = (
  * Provides complete set of physical properties for system calculations
  *
  * @param temperature - Air temperature (°C)
- * @param precision - Optional decimal precision for all values
  * @returns Object containing all physical properties
  */
-export const getProperties = (
-  temperature: number,
-  precision?: number
-): PhysicalProperties => ({
-  airDensity: calculateDensity(temperature, precision),
-  airViscosity: calculateViscosity(temperature, precision),
-  thermalConductivity: calculateThermalConductivity(temperature, precision),
-  specificHeat: calculateSpecificHeat(temperature, precision),
-  diffusivity: calculateDiffusivity(temperature, precision),
+export const getProperties = (temperature: number): PhysicalProperties => ({
+  airViscosity: calculateViscosity(temperature),
+  ...calculateDiffusivity(temperature),
 });
 
 // Type definitions

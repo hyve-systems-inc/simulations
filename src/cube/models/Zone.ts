@@ -7,6 +7,13 @@ export interface Vector3D {
   z: number; // meters
 }
 
+export interface ToleranceConfig {
+  geometric: number; // 1e-6 for dimensions
+  conservation: number; // 1e-4 for mass/energy
+  properties: number; // 1e-3 for physical properties
+  control: number; // 1e-2 for control parameters
+}
+
 /**
  * Configuration interface for zonal dimensions and layout
  * Reference: Section 1.1
@@ -22,9 +29,16 @@ export interface ZonalConfig {
   numPallets: number; // Number of pallets
 
   // Optional configuration parameters
-  tolerance?: number; // Numerical tolerance for calculations
-  packingFactor?: number; // Default packing factor for produce
+  tolerance: ToleranceConfig; // Numerical tolerance for calculations
+  packingFactor: number; // Default packing factor for produce
 }
+
+export const defaultToleranceConfig: ToleranceConfig = {
+  geometric: 1e-6, // 1e-6 for dimensions
+  conservation: 1e-4, // 1e-4 for mass/energy
+  properties: 1e-3, // 1e-3 for physical properties
+  control: 1e-2, // 1e-2 for control parameters
+};
 
 /**
  * Utility class for handling zonal dimensions and calculations
@@ -117,15 +131,13 @@ export class ZonalDimensions {
       z: config.zoneDimensions.z * config.numPallets,
     };
 
-    const tolerance = config.tolerance || 1e-6;
-
     if (
       Math.abs(calculatedSystemDimensions.x - config.systemDimensions.x) >
-        tolerance ||
+        config.tolerance.geometric ||
       Math.abs(calculatedSystemDimensions.y - config.systemDimensions.y) >
-        tolerance ||
+        config.tolerance.geometric ||
       Math.abs(calculatedSystemDimensions.z - config.systemDimensions.z) >
-        tolerance
+        config.tolerance.geometric
     ) {
       throw new Error(
         "System dimensions do not match zone dimensions times counts"
@@ -135,6 +147,15 @@ export class ZonalDimensions {
 
   /**
    * Create a ZonalConfig from system dimensions and counts
+   * Reference: Section VII - "Numerical Implementation"
+   * Section VIII - "Performance Metrics"
+   *
+   * Default tolerance of 1e-6 chosen based on:
+   * - Floating point precision considerations (typical epsilon ≈ 2.22e-16)
+   * - Physical measurement accuracy (typically 0.1-1%)
+   * - Numerical stability requirements
+   * - Test suite validation metrics
+   *
    * @param systemDimensions - Total system dimensions
    * @param numZones - Number of zones in flow direction
    * @param numLayers - Number of vertical layers
@@ -162,8 +183,8 @@ export class ZonalDimensions {
       numZones,
       numLayers,
       numPallets,
-      tolerance: options.tolerance || 1e-6,
-      packingFactor: options.packingFactor || 0.8,
+      tolerance: options.tolerance ?? defaultToleranceConfig, // Default tolerance
+      packingFactor: options.packingFactor ?? 0.8,
     };
 
     this.validateDimensions(config);
