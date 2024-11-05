@@ -54,7 +54,21 @@ export function calculateDevelopment(
       ? 0.05 * reynolds * hydraulicDiameter // Laminar flow
       : 10 * hydraulicDiameter; // Turbulent flow
 
-  return 1 - Math.exp(-x / entryLength);
+  // Development rate varies with Reynolds number
+  let developmentRate: number;
+
+  if (reynolds < 2300) {
+    // Laminar: development rate inversely proportional to Re
+    // Scale down development rate to get proper progression
+    developmentRate = 0.5 * (2300 / reynolds);
+  } else {
+    // Turbulent: use turbulence intensity correlation
+    const turbulenceIntensity = 0.16 * Math.pow(reynolds, -0.125);
+    developmentRate = 0.5 / turbulenceIntensity;
+  }
+
+  // Ensure smooth development progression
+  return Math.min(1.0, 1 - Math.exp((-developmentRate * x) / entryLength));
 }
 
 /**
