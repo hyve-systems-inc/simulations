@@ -6,19 +6,20 @@ import { significant } from "../lib.js";
  */
 
 /**
- * Calculate respiration heat generation
+ * Calculate respiration heat generation over a time step
  * From Section III, equation 3.1:
  * R(T) = rRef * exp(k * (Tp,i,j - Tref))
  * Qresp,i,j = R(T) * mp,i,j * hResp
  *
  * @param T - Product temperature in °C
- * @param rRef - Reference respiration rate in W/kg
+ * @param rRef - Reference respiration rate in W/kg/h
  * @param k - Temperature sensitivity coefficient in 1/K
  * @param Tref - Reference temperature in °C
  * @param mass - Product mass in kg
  * @param hResp - Specific respiration enthalpy in J/kg
+ * @param dt - Time step in seconds
  * @param sigFigs - Optional number of significant figures
- * @returns Respiration heat in Watts
+ * @returns Respiration heat generated during dt in Joules
  */
 export function respirationHeat(
   T: number,
@@ -27,10 +28,18 @@ export function respirationHeat(
   Tref: number,
   mass: number,
   hResp: number,
+  dt: number,
   sigFigs?: number
 ): number {
+  // Convert hourly rate to rate for current time step
+  const dtHours = dt / 3600; // Convert seconds to hours
+
+  // Calculate temperature-adjusted respiration rate
   const R = rRef * Math.exp(k * (T - Tref));
-  const Qresp = R * mass * hResp;
+
+  // Calculate heat generated during this time step
+  const Qresp = R * mass * hResp * dtHours;
+
   return significant(Qresp, sigFigs);
 }
 
@@ -51,19 +60,20 @@ export function respirationHeat(
  * @returns Convective heat transfer in Watts
  */
 export function convectiveHeat(
-  h0: number,
-  epsilon: number,
-  TCPI: number,
-  Re: number,
-  area: number,
-  Tp: number,
-  Ta: number,
+  h0: number, // Base heat transfer coefficient
+  epsilon: number, // Position factor
+  TCPI: number, // Cooling performance index
+  Re: number, // Reynolds number
+  area: number, // Heat transfer surface area
+  Tp: number, // Product temperature
+  Ta: number, // Air temperature
   sigFigs?: number
 ): number {
-  // Simplified Reynolds number correction function
-  const fRe = Math.pow(Re / 5000, 0.8); // Typical turbulent flow correlation
-
+  // Simplified Reynolds number correction
+  const fRe = Math.pow(Re / 5000, 0.8);
   const h = h0 * epsilon * TCPI * fRe;
+
+  // Positive when heat flows FROM product TO air (Tp > Ta)
   const Qconv = h * area * (Tp - Ta);
   return significant(Qconv, sigFigs);
 }

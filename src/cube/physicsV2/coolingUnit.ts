@@ -13,10 +13,11 @@ import { significant } from "../lib.js";
 export function sensibleCooling(
   massFlow: number,
   cpAir: number,
-  TaIn: number,
-  Tcoil: number,
+  TaIn: number, // Current air temperature
+  Tcoil: number, // Cooling coil temperature
   sigFigs?: number
 ): number {
+  // Positive when air is cooled (TaIn > Tcoil)
   const Qsensible = massFlow * cpAir * (TaIn - Tcoil);
   return significant(Qsensible, sigFigs);
 }

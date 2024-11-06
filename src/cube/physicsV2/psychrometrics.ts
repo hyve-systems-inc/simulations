@@ -1,4 +1,5 @@
 import { significant } from "../lib.js";
+import { SystemParameters, SystemState } from "../modelV2/systemEvolution.js";
 
 /**
  * Psychrometric calculations module
@@ -117,3 +118,21 @@ export function relativeHumidity(
   // Ensure RH doesn't exceed 1 due to numerical errors
   return significant(Math.min(RH, 1), sigFigs);
 }
+
+export const calculateTotalMoisture = (
+  state: SystemState,
+  params: SystemParameters
+): number => {
+  let totalMoisture = 0;
+  // Sum up moisture in products
+  for (let i = 0; i < params.zones; i++) {
+    for (let j = 0; j < params.layers; j++) {
+      totalMoisture += params.productMass[i][j] * state.productMoisture[i][j];
+    }
+  }
+  // Sum up moisture in air
+  for (let i = 0; i < params.zones; i++) {
+    totalMoisture += params.airMass[i] * state.airHumidity[i];
+  }
+  return totalMoisture;
+};

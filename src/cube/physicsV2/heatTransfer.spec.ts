@@ -11,7 +11,8 @@ describe("heatTransfer", () => {
         0.1, // k = 0.1 1/K
         10, // Tref = 10°C
         100, // mass = 100 kg
-        2000 // hResp = 2000 J/kg
+        2000, // hResp = 2000 J/kg
+        0.1 // dT == 0.1s
       );
 
       // At 20°C (10°C above reference), with k=0.1:
@@ -27,7 +28,8 @@ describe("heatTransfer", () => {
         0.1, // k
         10, // Tref
         0, // mass = 0
-        2000 // hResp
+        2000, // hResp = 2000 J/kg
+        0.1 // dT == 0.1s // hResp
       );
       expect(result).to.equal(0);
     });
@@ -39,7 +41,8 @@ describe("heatTransfer", () => {
         0.1, // k
         10, // Tref
         100, // mass
-        2000, // hResp
+        2000, // hResp = 2000 J/kg
+        0.1, // dT == 0.1s
         3 // sigFigs
       );
       expect(result).to.equal(54200);
@@ -52,7 +55,8 @@ describe("heatTransfer", () => {
         0.1,
         10,
         100,
-        2000
+        2000, // hResp = 2000 J/kg
+        0.1 // dT == 0.1s
       );
       const higherTemp = heatTransfer.respirationHeat(
         25,
@@ -60,7 +64,8 @@ describe("heatTransfer", () => {
         0.1,
         10,
         100,
-        2000
+        2000, // hResp = 2000 J/kg
+        0.1 // dT == 0.1s
       );
       expect(higherTemp).to.be.greaterThan(lowerTemp);
     });

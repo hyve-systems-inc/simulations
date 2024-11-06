@@ -5,6 +5,7 @@ import * as mass from "../physicsV2/massConservation.js";
 import * as metrics from "../physicsV2/performanceMetrics.js";
 import * as psychro from "../physicsV2/psychrometrics.js";
 import * as flow from "../physicsV2/turbulentFlow.js";
+import { calculateTimeStep } from "../physicsV2/time.js";
 
 /**
  * System state interface defining state variables
@@ -14,7 +15,7 @@ import * as flow from "../physicsV2/turbulentFlow.js";
  * - Ta,i(t) = Air temperature
  * - wa,i(t) = Air humidity ratio
  */
-interface SystemState {
+export interface SystemState {
   productTemp: number[][]; // [zone][layer] in °C
   productMoisture: number[][]; // [zone][layer] in kg water/kg dry matter
   airTemp: number[]; // [zone] in °C
@@ -28,7 +29,7 @@ interface SystemState {
  * System parameters interface
  * References multiple sections for physical properties and constraints
  */
-interface SystemParameters {
+export interface SystemParameters {
   // Section I: Physical Domain
   zones: number; // N sequential zones
   layers: number; // M vertical layers
@@ -72,15 +73,20 @@ interface SystemParameters {
 }
 
 /**
- * Calculate the next system state
- * References Section XI: Numerical Solution Method
+ * Calculate the next system state with automatic time stepping
+ * References Section XI: Numerical Solution Method (11.2 and 11.3)
+ * @param state Current system state
+ * @param params System parameters
+ * @returns New system state
  */
 export function evolveState(
   state: SystemState,
-  params: SystemParameters,
-  dt: number
+  params: SystemParameters
 ): SystemState {
-  // Initialize new state following Section 11.2
+  // Calculate appropriate time step
+  const dt = calculateTimeStep(params);
+
+  // Initialize new state
   const newState: SystemState = {
     productTemp: Array(params.zones)
       .fill(0)
@@ -95,9 +101,12 @@ export function evolveState(
     t: state.t + dt,
   };
 
+  let totalQsensible = 0;
+  let totalQlatent = 0;
+
   // Process each zone
   for (let i = 0; i < params.zones; i++) {
-    // Calculate air properties - Section IV
+    // Calculate air properties
     const airDensity = params.pressure / (287.1 * (state.airTemp[i] + 273.15));
     const velocity =
       params.airFlow /
@@ -105,9 +114,9 @@ export function evolveState(
     const hydraulicDiam =
       (4 * params.containerWidth * params.containerHeight) /
       (2 * (params.containerWidth + params.containerHeight));
-    const viscosity = 1.81e-5;
+    const viscosity = 1.81e-5; // Air viscosity at typical conditions
 
-    // Section IV (4.1): Calculate turbulent flow characteristics
+    // Calculate flow characteristics
     const Re = flow.reynoldsNumber(
       airDensity,
       velocity,
@@ -116,29 +125,30 @@ export function evolveState(
     );
     const turbulenceIntensity = flow.turbulenceIntensity(Re);
 
-    // Process each layer
-    let totalQconv = 0;
-    let totalMevap = 0;
+    let zoneQconv = 0; // Net convective heat transfer to air
+    let zoneMevap = 0; // Net evaporative mass transfer to air
 
+    // Process each layer in the zone
     for (let j = 0; j < params.layers; j++) {
-      // Section IV (4.2): Heat transfer enhancement
+      // Enhanced heat transfer coefficient due to turbulence
       const hEff = flow.effectiveHeatTransfer(
         params.baseHeatTransfer,
         params.alpha,
         turbulenceIntensity
       );
 
-      // Section III (3.1): Respiration heat
+      // Respiration heat (positive = heat generated)
       const Qresp = heat.respirationHeat(
         state.productTemp[i][j],
         params.respirationRate,
         params.respirationTempCoeff,
         params.respirationRefTemp,
         params.productMass[i][j],
-        params.respirationEnthalpy
+        params.respirationEnthalpy,
+        dt
       );
 
-      // Section III (3.2): Convective heat transfer
+      // Convective heat transfer (positive = heat to air)
       const Qconv = heat.convectiveHeat(
         hEff,
         params.positionFactor[i][j],
@@ -149,23 +159,25 @@ export function evolveState(
         state.airTemp[i]
       );
 
-      // Section III (3.3): Evaporative cooling
+      // Vapor pressure deficit for evaporation
       const VPD = psychro.vaporPressureDeficit(
         state.productTemp[i][j],
         params.waterActivity,
         state.airHumidity[i]
       );
 
+      // Evaporative cooling (positive = cooling of product)
       const Qevap = heat.evaporativeCooling(
         params.evaporativeMassTransfer,
         params.productArea[i][j],
         params.surfaceWetness,
         VPD,
         state.productTemp[i][j],
-        2.45e6 // λ: Latent heat of vaporization
+        2.45e6 // Latent heat of vaporization
       );
 
-      // Section II (2.1): Product energy balance
+      // Product temperature rate of change
+      // Qresp adds heat, Qconv and Qevap remove heat
       const dTpdt = energy.productTemperatureRate(
         Qresp,
         Qconv,
@@ -174,19 +186,23 @@ export function evolveState(
         params.specificHeat
       );
 
-      // Section II (2.2): Product mass conservation
-      const mevap = Qevap / 2.45e6;
+      // Mass transfer calculations
+      const mevap = Qevap / 2.45e6; // Evaporative mass flow rate
       const dwpdt = mass.productMoistureRate(mevap, params.productMass[i][j]);
 
-      // Update state following Section 11.2 Step 3
+      // Update product state
       newState.productTemp[i][j] = state.productTemp[i][j] + dTpdt * dt;
       newState.productMoisture[i][j] = state.productMoisture[i][j] + dwpdt * dt;
 
-      totalQconv += Qconv;
-      totalMevap += mevap;
+      // Accumulate zone totals (positive = to air)
+      zoneQconv += Qconv;
+      zoneMevap += mevap;
     }
 
-    // Section V (5.1-5.2): Cooling unit calculations
+    // Cooling unit calculations
+    const prevZoneTemp = i > 0 ? state.airTemp[i - 1] : state.airTemp[i];
+
+    // Sensible cooling (positive = heat removed)
     const Qsensible = cooling.sensibleCooling(
       params.airFlow,
       params.airSpecificHeat,
@@ -194,6 +210,7 @@ export function evolveState(
       params.coilTemp
     );
 
+    // Dehumidification
     const mdehum = cooling.dehumidificationRate(
       params.airFlow,
       state.airHumidity[i],
@@ -202,35 +219,35 @@ export function evolveState(
       params.coilTemp
     );
 
-    const Qlatent = mdehum * 2.45e6;
-    const mvent = 0;
+    const Qlatent = mdehum * 2.45e6; // Latent cooling
+    const mvent = 0; // Assume no ventilation for now
 
-    // Section II (2.1): Air energy balance
-    const prevZoneTemp = i > 0 ? state.airTemp[i - 1] : state.airTemp[i];
+    // Air temperature rate of change
+    // zoneQconv adds heat, Qsensible and Qlatent remove heat
     const dTadt = energy.airTemperatureRate(
       params.airMass[i],
       params.airSpecificHeat,
       params.airFlow,
       prevZoneTemp,
       state.airTemp[i],
-      totalQconv,
+      zoneQconv,
       params.wallHeatTransfer[i],
       Qsensible + Qlatent
     );
 
-    // Section II (2.2): Air moisture balance
+    // Air humidity rate of change
     const dwadt = mass.airMoistureRate(
-      totalMevap,
+      zoneMevap,
       mdehum,
       mvent,
       params.airMass[i]
     );
 
-    // Update state with physical constraints (Section IX)
+    // Update air state
     newState.airTemp[i] = state.airTemp[i] + dTadt * dt;
     newState.airHumidity[i] = state.airHumidity[i] + dwadt * dt;
 
-    // Section IX (9.1): Physical bounds
+    // Enforce humidity constraints
     if (
       !psychro.isHumidityValid(newState.airHumidity[i], newState.airTemp[i])
     ) {
@@ -238,10 +255,14 @@ export function evolveState(
         newState.airTemp[i]
       );
     }
+
+    // Accumulate total cooling
+    totalQsensible += Qsensible;
+    totalQlatent += Qlatent;
   }
 
-  // Section V (5.3): Total cooling effect
-  const totalCooling = params.zones * (Qsensible + Qlatent);
+  // Update system performance metrics
+  const totalCooling = totalQsensible + totalQlatent;
   newState.coolingPower = cooling.actualCoolingPower(
     params.ratedPower,
     totalCooling,
@@ -249,16 +270,20 @@ export function evolveState(
     state.TCPI
   );
 
-  // Section VI (6.1-6.2): Control system updates
   const COP = metrics.coefficientOfPerformance(
-    Qsensible,
-    Qlatent,
+    totalQsensible,
+    totalQlatent,
     newState.coolingPower
   );
+
+  // Update TCPI with feedback from COP
   newState.TCPI = Math.min(
     1.0,
     state.TCPI * (1 + 0.1 * (COP / params.TCPITarget - 1))
   );
+
+  // Monitor energy flows
+  energy.calculateEnergyFlows(newState, params, dt);
 
   return newState;
 }
