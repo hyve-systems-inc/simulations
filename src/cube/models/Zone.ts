@@ -15,6 +15,25 @@ export interface ToleranceConfig {
 }
 
 /**
+ * Zone position in the system
+ * Reference: Section 1.1
+ */
+export interface ZonePosition {
+  i: number; // Zone index in flow direction
+  j: number; // Layer index in vertical direction
+  k: number; // Pallet index in lateral direction
+}
+
+/**
+ * Temperature configuration for a zone
+ * Reference: Section V - "Initial Conditions"
+ */
+export interface ZoneTemperature {
+  position: ZonePosition;
+  temperature: number; // °C
+}
+
+/**
  * Configuration interface for zonal dimensions and layout
  * Reference: Section 1.1
  */
@@ -28,9 +47,13 @@ export interface ZonalConfig {
   numLayers: number; // Number of vertical layers
   numPallets: number; // Number of pallets
 
-  // Optional configuration parameters
+  // Configuration parameters
   tolerance: ToleranceConfig; // Numerical tolerance for calculations
-  packingFactor: number; // Default packing factor for produce
+  commodityPackingFactor: number; // Default packing factor for produce
+  containerFillFactor?: number; // The proportion of the cube internal volume occupied by goods
+
+  // Temperature configuration - now required
+  temperatures: number[][][]; // 3D array of temperatures [zone][layer][pallet]
 }
 
 export const defaultToleranceConfig: ToleranceConfig = {
@@ -44,11 +67,7 @@ export const defaultToleranceConfig: ToleranceConfig = {
  * Utility class for handling zonal dimensions and calculations
  */
 export class ZonalDimensions {
-  /**
-   * Calculate total volume of a zone
-   * @param config - Zonal configuration
-   * @returns Volume in cubic meters
-   */
+  // Previous volume and area calculation methods remain the same
   static calculateZoneVolume(config: ZonalConfig): number {
     return (
       config.zoneDimensions.x *
@@ -57,11 +76,6 @@ export class ZonalDimensions {
     );
   }
 
-  /**
-   * Calculate total system volume
-   * @param config - Zonal configuration
-   * @returns Volume in cubic meters
-   */
   static calculateSystemVolume(config: ZonalConfig): number {
     return (
       config.systemDimensions.x *
@@ -70,23 +84,10 @@ export class ZonalDimensions {
     );
   }
 
-  /**
-   * Calculate cross-sectional area in flow direction
-   * @param config - Zonal configuration
-   * @returns Area in square meters
-   */
   static calculateFlowArea(config: ZonalConfig): number {
     return config.zoneDimensions.y * config.zoneDimensions.z;
   }
 
-  /**
-   * Calculate zone dimensions from system dimensions and counts
-   * @param systemDimensions - Total system dimensions
-   * @param numZones - Number of zones in flow direction
-   * @param numLayers - Number of vertical layers
-   * @param numPallets - Number of pallets
-   * @returns Calculated zone dimensions
-   */
   static calculateZoneDimensions(
     systemDimensions: Vector3D,
     numZones: number,
@@ -101,12 +102,45 @@ export class ZonalDimensions {
   }
 
   /**
-   * Validate configuration dimensions
-   * @param config - Zonal configuration to validate
-   * @throws Error if dimensions are invalid
+   * Initialize temperature array with a default temperature
    */
-  static validateDimensions(config: ZonalConfig): void {
-    // Check for positive dimensions
+  private static initializeTemperatures(
+    numZones: number,
+    numLayers: number,
+    numPallets: number,
+    defaultTemp: number
+  ): number[][][] {
+    return Array(numZones)
+      .fill(null)
+      .map(() =>
+        Array(numLayers)
+          .fill(null)
+          .map(() => Array(numPallets).fill(defaultTemp))
+      );
+  }
+
+  /**
+   * Apply specific zone temperatures to the temperature array
+   */
+  private static applyZoneTemperatures(
+    temperatures: number[][][],
+    zoneTemps?: ZoneTemperature[]
+  ): void {
+    if (zoneTemps) {
+      for (const zt of zoneTemps) {
+        temperatures[zt.position.i][zt.position.j][zt.position.k] =
+          zt.temperature;
+      }
+    }
+  }
+
+  /**
+   * Validate configuration including temperatures
+   * @param config - Zonal configuration to validate
+   * @throws Error if configuration is invalid
+   */
+  static validateConfig(config: ZonalConfig): void {
+    // Validate dimensions
     if (
       config.zoneDimensions.x <= 0 ||
       config.zoneDimensions.y <= 0 ||
@@ -115,7 +149,6 @@ export class ZonalDimensions {
       throw new Error("Zone dimensions must be positive");
     }
 
-    // Check for positive counts
     if (
       config.numZones <= 0 ||
       config.numLayers <= 0 ||
@@ -124,7 +157,6 @@ export class ZonalDimensions {
       throw new Error("Zone counts must be positive");
     }
 
-    // Check system dimensions match zone dimensions times counts
     const calculatedSystemDimensions = {
       x: config.zoneDimensions.x * config.numZones,
       y: config.zoneDimensions.y * config.numLayers,
@@ -143,32 +175,53 @@ export class ZonalDimensions {
         "System dimensions do not match zone dimensions times counts"
       );
     }
+
+    // Validate temperature array dimensions
+    if (
+      !config.temperatures ||
+      config.temperatures.length !== config.numZones ||
+      config.temperatures[0].length !== config.numLayers ||
+      config.temperatures[0][0].length !== config.numPallets
+    ) {
+      throw new Error(
+        "Temperature array dimensions do not match zone configuration"
+      );
+    }
+
+    // Validate temperature values
+    for (let i = 0; i < config.numZones; i++) {
+      for (let j = 0; j < config.numLayers; j++) {
+        for (let k = 0; k < config.numPallets; k++) {
+          const temp = config.temperatures[i][j][k];
+          if (temp === undefined || temp === null) {
+            throw new Error(`Missing temperature for zone (${i},${j},${k})`);
+          }
+          if (temp < -20 || temp > 50) {
+            throw new Error(
+              `Temperature ${temp}°C at position (${i},${j},${k}) out of reasonable range [-20°C, 50°C]`
+            );
+          }
+        }
+      }
+    }
   }
 
   /**
-   * Create a ZonalConfig from system dimensions and counts
-   * Reference: Section VII - "Numerical Implementation"
-   * Section VIII - "Performance Metrics"
-   *
-   * Default tolerance of 1e-6 chosen based on:
-   * - Floating point precision considerations (typical epsilon ≈ 2.22e-16)
-   * - Physical measurement accuracy (typically 0.1-1%)
-   * - Numerical stability requirements
-   * - Test suite validation metrics
-   *
-   * @param systemDimensions - Total system dimensions
-   * @param numZones - Number of zones in flow direction
-   * @param numLayers - Number of vertical layers
-   * @param numPallets - Number of pallets
-   * @param options - Additional configuration options
-   * @returns Complete zonal configuration
+   * Create a ZonalConfig with required temperature configuration
    */
   static createConfig(
     systemDimensions: Vector3D,
     numZones: number,
     numLayers: number,
     numPallets: number,
-    options: Partial<ZonalConfig> = {}
+    options: {
+      commodityPackingFactor?: number;
+      tolerance?: ToleranceConfig;
+      temperatures: {
+        default: number;
+        zones?: ZoneTemperature[];
+      };
+    }
   ): ZonalConfig {
     const zoneDimensions = this.calculateZoneDimensions(
       systemDimensions,
@@ -177,18 +230,39 @@ export class ZonalDimensions {
       numPallets
     );
 
+    // Initialize temperature array with default temperature
+    const temperatures = this.initializeTemperatures(
+      numZones,
+      numLayers,
+      numPallets,
+      options.temperatures.default
+    );
+
+    // Apply specific zone temperatures if provided
+    this.applyZoneTemperatures(temperatures, options.temperatures.zones);
+
     const config: ZonalConfig = {
       zoneDimensions,
       systemDimensions,
       numZones,
       numLayers,
       numPallets,
-      tolerance: options.tolerance ?? defaultToleranceConfig, // Default tolerance
-      packingFactor: options.packingFactor ?? 0.8,
+      tolerance: options.tolerance ?? defaultToleranceConfig,
+      commodityPackingFactor: options.commodityPackingFactor ?? 0.8,
+      temperatures,
     };
 
-    this.validateDimensions(config);
-
+    this.validateConfig(config);
     return config;
+  }
+
+  /**
+   * Get temperature for a specific zone
+   */
+  static getZoneTemperature(
+    config: ZonalConfig,
+    position: ZonePosition
+  ): number {
+    return config.temperatures[position.i][position.j][position.k];
   }
 }

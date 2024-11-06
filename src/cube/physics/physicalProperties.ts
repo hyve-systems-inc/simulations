@@ -38,6 +38,7 @@ export const calculateDensity = (
 
   const T = temperature + ABSOLUTE_ZERO;
   const result = pressure / (R_AIR * T);
+
   return significant(result, precision);
 };
 

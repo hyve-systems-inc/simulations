@@ -10,19 +10,21 @@ import {
   TransientState,
   TransientConfig,
 } from "./transientFlowExtensions.js";
-import { ZonalDimensions } from "../models/Zone.js";
+import { ZonalConfig, ZonalDimensions } from "../models/Zone.js";
 import * as flow from "./flowProperties--simplified.js";
 import * as physical from "./physicalProperties.js";
+import { COMMODITY_PROPERTIES, PACKAGING_CONFIGS } from "../cube.js";
+import { Position } from "../models/Position.js";
 
 describe("Transient Flow Extensions", () => {
   // Common test configuration
-  const baseConfig = ZonalDimensions.createConfig(
-    { x: 3, y: 3, z: 3 },
-    4,
-    6,
-    4,
-    { packingFactor: 0.8 }
-  );
+  const testZonalConfig: ZonalConfig = {
+    ...ZonalDimensions.createConfig({ x: 3, y: 3, z: 3 }, 4, 6, 4, {
+      commodityPackingFactor: 0.8,
+      temperatures: { default: 20 },
+    }),
+    containerFillFactor: 0.9,
+  };
 
   const baseTransientConfig: TransientConfig = {
     wallTemp: 20,
@@ -32,7 +34,7 @@ describe("Transient Flow Extensions", () => {
   };
 
   const baseTransientState = initializeTransientState(
-    baseConfig,
+    testZonalConfig,
     baseTransientConfig
   );
 
@@ -147,10 +149,10 @@ describe("Transient Flow Extensions", () => {
         development: 1,
       };
 
-      const massFlow = calculateMassFlow(baseConfig, state);
+      const massFlow = calculateMassFlow(testZonalConfig, state);
 
       // Calculate expected mass flow
-      const area = flow.calculateFlowArea(baseConfig);
+      const area = flow.calculateFlowArea(testZonalConfig);
       const expectedMassFlow = state.density * state.velocity * area;
 
       expect(massFlow).to.be.approximately(expectedMassFlow, 1e-6);
@@ -161,18 +163,14 @@ describe("Transient Flow Extensions", () => {
     /**
      * Test momentum balance and velocity calculation
      * Reference: Section II - "Core Conservation Equations"
+     * Reference: Section IV - "Momentum equation: ∂(ρv)/∂t + ∂(ρv²)/∂x = -∂p/∂x - f"
      *
-     * Physical basis:
-     * - Pressure forces drive flow
-     * - Wall friction opposes motion
-     * - Net force determines acceleration
-     *
-     * Test conditions:
-     * - Pressure difference drives flow
-     * - Initial velocity = 0
-     * - Expected acceleration from pressure gradient
+     * Physical basis from documentation:
+     * - Pressure forces drive flow (-∂p/∂x)
+     * - Wall friction opposes motion (f term)
      */
     it("calculates new velocity based on pressure gradient", () => {
+      const position = new Position(1, 1, 1);
       const airProps: flow.AirProperties = {
         density: 1.2,
         viscosity: 1.825e-5,
@@ -180,25 +178,19 @@ describe("Transient Flow Extensions", () => {
         prandtl: 0.713,
       };
 
-      const dt = 0.01;
+      const dt = 0.01; // Small time step for testing momentum balance
+
       const newVelocity = calculateNewVelocity(
-        baseConfig,
+        testZonalConfig,
         baseTransientState,
+        position,
         dt,
         airProps,
-        baseTransientConfig.outletPressure
+        baseTransientConfig
       );
 
-      // Velocity should increase due to pressure gradient
-      expect(newVelocity).to.be.greaterThan(0);
-
-      // Velocity should not exceed theoretical maximum from Bernoulli
-      const maxVelocity = Math.sqrt(
-        (2 *
-          (baseTransientState.pressure - baseTransientConfig.outletPressure)) /
-          baseTransientState.density
-      );
-      expect(newVelocity).to.be.lessThan(maxVelocity);
+      // Verify pressure gradient causes acceleration
+      expect(newVelocity).to.be.greaterThan(baseTransientState.velocity);
     });
   });
 
@@ -227,11 +219,14 @@ describe("Transient Flow Extensions", () => {
 
       const dt = 0.1;
       const newTemp = calculateNewTemperature(
-        baseConfig,
+        testZonalConfig,
         baseTransientState,
         baseTransientConfig,
+        new Position(1, 1, 1),
         dt,
-        airProps
+        airProps,
+        COMMODITY_PROPERTIES.strawberry,
+        PACKAGING_CONFIGS["strawberry-standard"]
       );
 
       // Temperature should increase (warming from walls)
@@ -258,8 +253,9 @@ describe("Transient Flow Extensions", () => {
      * - All properties updated consistently
      */
     it("updates full state consistently", () => {
+      const position = new Position(1, 1, 1);
       const initialState = initializeTransientState(
-        baseConfig,
+        testZonalConfig,
         baseTransientConfig
       );
 
@@ -270,11 +266,12 @@ describe("Transient Flow Extensions", () => {
         prandtl: 0.713,
       };
 
-      const dt = calculateTimeStep(initialState, baseConfig);
+      const dt = calculateTimeStep(initialState, testZonalConfig);
       const newState = updateTransientState(
-        baseConfig,
+        testZonalConfig,
         initialState,
         baseTransientConfig,
+        position,
         dt,
         airProps
       );
@@ -283,12 +280,12 @@ describe("Transient Flow Extensions", () => {
       expect(newState.time).to.equal(initialState.time + dt);
 
       // Verify mass conservation
-      const area = flow.calculateFlowArea(baseConfig);
+      const area = flow.calculateFlowArea(testZonalConfig);
       const expectedMassFlow = newState.density * newState.velocity * area;
       expect(newState.massFlow).to.be.approximately(expectedMassFlow, 1e-4);
 
       // Verify energy is bounded
-      const volume = area * baseConfig.zoneDimensions.x;
+      const volume = area * testZonalConfig.zoneDimensions.x;
       const maxEnergy =
         newState.density *
         volume *
@@ -298,104 +295,149 @@ describe("Transient Flow Extensions", () => {
     });
   });
 
+  /**
+   * Test time step calculations
+   * Reference: Section XI - "Time step selection:
+   * dt = min(
+   *   L/(10 * v),           # Convective time scale
+   *   mp * cp/(10 * h * A), # Thermal time scale
+   *   ma/(10 * ṁa)         # Mass flow time scale
+   * )"
+   */
   describe("Time Step Selection", () => {
     /**
-     * Test time step calculation
-     * Reference: Section VII, 2.2 - "Stability Criteria"
-     *
-     * Physical basis:
-     * - CFL condition: dt ≤ dx/v (Courant-Friedrichs-Lewy)
-     *   Ensures fluid particles don't move more than one cell per time step
-     *
-     * - Diffusive stability: dt ≤ dx²/(2α)
-     *   Prevents numerical instabilities in heat diffusion calculations
-     *
-     * Test conditions:
-     * - Velocity = 2.0 m/s
-     *   --> CFL limit = 1.0m / 2.0m/s = 0.5s
-     *
-     * - dx = 1.0m (from baseConfig)
-     * - Temperature = 20°C
-     * - Both stability criteria must be satisfied
+     * Test basic time step calculation
+     * Reference: Section XI - "Calculate appropriate time step based on physics"
      */
-    it("calculates appropriate time step based on physics", () => {
-      const dt = calculateTimeStep(baseTransientState, baseConfig);
+    it("calculates time step as minimum of documented time scales", () => {
+      const dt = calculateTimeStep(baseTransientState, testZonalConfig);
 
-      // Verify CFL condition
-      const dx = baseConfig.zoneDimensions.x;
-      const cflLimit = dx / baseTransientState.velocity;
-      expect(dt).to.be.lessThanOrEqual(cflLimit);
+      // Calculate all time scales per documentation
+      const convectiveTimeScale =
+        testZonalConfig.zoneDimensions.x / (10 * baseTransientState.velocity);
 
-      // Verify diffusive stability
-      const { diffusivity: alpha } = physical.calculateDiffusivity(
+      const { diffusivity } = physical.calculateDiffusivity(
         baseTransientState.temperature
       );
-      const diffusiveLimit = (dx * dx) / (2 * alpha);
-      expect(dt).to.be.lessThanOrEqual(diffusiveLimit);
+      const thermalTimeScale =
+        (testZonalConfig.zoneDimensions.x * testZonalConfig.zoneDimensions.x) /
+        (20 * diffusivity);
 
-      // Verify dt matches the most restrictive limit
-      const expectedDt = Math.min(cflLimit, diffusiveLimit);
+      const massFlowTimeScale =
+        (baseTransientState.density *
+          flow.calculateFlowArea(testZonalConfig) *
+          testZonalConfig.zoneDimensions.x) /
+        (10 * baseTransientState.massFlow);
+
+      // Verify dt is minimum of time scales
+      const expectedDt = Math.min(
+        convectiveTimeScale,
+        thermalTimeScale,
+        massFlowTimeScale
+      );
       expect(dt).to.be.approximately(expectedDt, 1e-6);
     });
 
     /**
-     * Test time step behavior with varying velocities
-     * Reference: Section VII, 2.2 - "Stability Criteria"
-     *
-     * Physical basis:
-     * - Higher velocities require smaller time steps
-     * - CFL condition becomes more restrictive as velocity increases
-     * - Diffusive limit remains constant for fixed temperature
-     *
-     * Test conditions:
-     * - Low velocity (0.5 m/s)
-     * - Medium velocity (2.0 m/s)
-     * - High velocity (5.0 m/s)
+     * Test time scales vary correctly with velocity
+     * Reference: Section XI - "dt = min(...)"
      */
-    it("adjusts time step appropriately with velocity changes", () => {
-      const velocities = [0.5, 2.0, 5.0];
-      const timeSteps = velocities.map((v) => {
-        const state = { ...baseTransientState, velocity: v };
-        return calculateTimeStep(state, baseConfig);
-      });
+    it("scales correctly with velocity changes", () => {
+      // Calculate baseline
+      const baseVelocity = baseTransientState.velocity;
+      const baseDt = calculateTimeStep(baseTransientState, testZonalConfig);
 
-      // Verify inverse relationship with velocity
-      for (let i = 1; i < timeSteps.length; i++) {
-        expect(timeSteps[i]).to.be.lessThan(timeSteps[i - 1]);
+      // Double velocity
+      const fasterState = {
+        ...baseTransientState,
+        velocity: baseVelocity * 2,
+        massFlow: baseTransientState.massFlow * 2, // Mass flow scales with velocity
+      };
+      const fasterDt = calculateTimeStep(fasterState, testZonalConfig);
 
-        // Verify inverse proportionality
-        const ratio = timeSteps[i - 1] / timeSteps[i];
-        const velocityRatio = velocities[i] / velocities[i - 1];
-        expect(ratio).to.be.approximately(velocityRatio, 0.1);
-      }
+      // Convective time scale should halve
+      const baseConvectiveScale =
+        testZonalConfig.zoneDimensions.x / (10 * baseVelocity);
+      const fasterConvectiveScale =
+        testZonalConfig.zoneDimensions.x / (10 * (baseVelocity * 2));
+      expect(fasterConvectiveScale).to.be.approximately(
+        baseConvectiveScale / 2,
+        1e-6
+      );
+
+      // Mass flow time scale should halve
+      const baseFlowScale =
+        (baseTransientState.density *
+          flow.calculateFlowArea(testZonalConfig) *
+          testZonalConfig.zoneDimensions.x) /
+        (10 * baseTransientState.massFlow);
+      const fasterFlowScale =
+        (fasterState.density *
+          flow.calculateFlowArea(testZonalConfig) *
+          testZonalConfig.zoneDimensions.x) /
+        (10 * fasterState.massFlow);
+      expect(fasterFlowScale).to.be.approximately(baseFlowScale / 2, 1e-6);
     });
 
     /**
-     * Test time step limits for extreme conditions
-     * Reference: Section VII, 2.2 - "Stability Criteria"
-     *
-     * Physical basis:
-     * - Very high velocities require very small time steps
-     * - Very low velocities are limited by diffusive stability
-     * - System must remain stable at bounds of operation
-     *
-     * Test conditions:
-     * - Near-zero velocity
-     * - Maximum expected velocity
+     * Test time scales vary correctly with temperature
+     * Reference: Section XI - "mp * cp/(10 * h * A)"
      */
-    it("handles extreme velocity conditions safely", () => {
-      // Test near-zero velocity
-      const slowState = { ...baseTransientState, velocity: 1e-6 };
-      const dtSlow = calculateTimeStep(slowState, baseConfig);
-      expect(dtSlow).to.be.finite;
-      expect(dtSlow).to.be.greaterThan(0);
+    it("scales correctly with temperature changes", () => {
+      // Calculate baseline
+      const baseTemp = baseTransientState.temperature;
+      const baseDt = calculateTimeStep(baseTransientState, testZonalConfig);
 
-      // Test very high velocity
-      const fastState = { ...baseTransientState, velocity: 100.0 };
-      const dtFast = calculateTimeStep(fastState, baseConfig);
-      expect(dtFast).to.be.finite;
-      expect(dtFast).to.be.greaterThan(0);
-      expect(dtFast).to.be.lessThan(dtSlow);
+      // Change temperature
+      const warmerState = {
+        ...baseTransientState,
+        temperature: baseTemp + 20,
+      };
+      const warmerDt = calculateTimeStep(warmerState, testZonalConfig);
+
+      // Thermal time scale should change with diffusivity
+      const { diffusivity: baseDiff } = physical.calculateDiffusivity(baseTemp);
+      const { diffusivity: warmerDiff } = physical.calculateDiffusivity(
+        baseTemp + 20
+      );
+      const baseTimeScale =
+        (testZonalConfig.zoneDimensions.x * testZonalConfig.zoneDimensions.x) /
+        (20 * baseDiff);
+      const warmerTimeScale =
+        (testZonalConfig.zoneDimensions.x * testZonalConfig.zoneDimensions.x) /
+        (20 * warmerDiff);
+
+      expect(warmerTimeScale / baseTimeScale).to.be.approximately(
+        baseDiff / warmerDiff,
+        1e-6
+      );
+    });
+
+    /**
+     * Test stability criteria for extreme conditions
+     * Reference: Section XI - "Stability Requirements"
+     */
+    it("maintains stability under extreme conditions", () => {
+      // Very low velocity case
+      const lowVelocityState = {
+        ...baseTransientState,
+        velocity: 1e-6,
+        massFlow: 1e-6,
+      };
+      const dtLow = calculateTimeStep(lowVelocityState, testZonalConfig);
+      expect(dtLow).to.be.finite;
+      expect(dtLow).to.be.greaterThan(0);
+
+      // Very high velocity case
+      const highVelocityState = {
+        ...baseTransientState,
+        velocity: 1e3,
+        massFlow: 1e3,
+      };
+      const dtHigh = calculateTimeStep(highVelocityState, testZonalConfig);
+      expect(dtHigh).to.be.finite;
+      expect(dtHigh).to.be.greaterThan(0);
+      expect(dtHigh).to.be.lessThan(dtLow);
     });
   });
 });

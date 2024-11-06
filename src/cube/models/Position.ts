@@ -134,6 +134,34 @@ export class Position {
   }
 
   /**
+   * Determine axial zone based on relative position in the flow direction
+   * @param config - System configuration
+   * @returns Axial zone index
+   */
+  getAxialZone(config: ZonalConfig): number {
+    const relativeFlowPosition = this.getRelativePosition(config).flowPosition;
+    return Math.floor(relativeFlowPosition * config.numZones);
+  }
+
+  /**
+   * Determine radial zone based on distance from center in vertical and lateral directions
+   * @param config - System configuration
+   * @returns Radial zone index
+   */
+  getRadialZone(config: ZonalConfig): number {
+    const { heightPosition, lateralPosition } =
+      this.getRelativePosition(config);
+
+    // Calculate radial distance from center assuming (0.5, 0.5) is the midpoint for normalized units
+    const radialDistance = Math.sqrt(
+      (heightPosition - 0.5) ** 2 + (lateralPosition - 0.5) ** 2
+    );
+
+    // Classify into radial zones based on radial distance
+    return Math.floor(radialDistance * config.numLayers);
+  }
+
+  /**
    * Get relative position within the system (0 to 1 in each dimension)
    * @param config - System configuration
    * @returns Object with relative positions

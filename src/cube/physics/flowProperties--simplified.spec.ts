@@ -12,17 +12,17 @@ import {
   calculateFrictionFactor,
   calculateHeatTransferArea,
 } from "./flowProperties--simplified.js";
-import { ZonalDimensions } from "../models/Zone.js";
+import { ZonalConfig, ZonalDimensions } from "../models/Zone.js";
 
 describe("Flow Properties Calculations", () => {
   // Standard test configuration based on typical container dimensions
-  const testZonalConfig = ZonalDimensions.createConfig(
-    { x: 3, y: 3, z: 3 },
-    4,
-    6,
-    4,
-    { packingFactor: 0.8 }
-  );
+  const testZonalConfig: ZonalConfig = {
+    ...ZonalDimensions.createConfig({ x: 3, y: 3, z: 3 }, 4, 6, 4, {
+      commodityPackingFactor: 0.8,
+      temperatures: { default: 20 },
+    }),
+    containerFillFactor: 0.8,
+  };
 
   // Standard air properties at 20°C
   const standardAirProps = {
@@ -55,7 +55,8 @@ describe("Flow Properties Calculations", () => {
     it("calculates correct hydraulic diameter for rectangular duct", () => {
       const crossSection =
         testZonalConfig.zoneDimensions.y * testZonalConfig.zoneDimensions.z;
-      const flowArea = crossSection * (1 - testZonalConfig.packingFactor!);
+      const flowArea =
+        crossSection * (1 - testZonalConfig.commodityPackingFactor);
       const perimeter =
         2 *
         (testZonalConfig.zoneDimensions.y + testZonalConfig.zoneDimensions.z);
@@ -123,8 +124,14 @@ describe("Flow Properties Calculations", () => {
      * Ratio = (1-0.6)/(1-0.9) = 0.4/0.1 = 4.0
      */
     it("responds correctly to packing density", () => {
-      const looseConfig = { ...testZonalConfig, packingFactor: 0.6 };
-      const denseConfig = { ...testZonalConfig, packingFactor: 0.9 };
+      const looseConfig: ZonalConfig = {
+        ...testZonalConfig,
+        commodityPackingFactor: 0.6,
+      };
+      const denseConfig: ZonalConfig = {
+        ...testZonalConfig,
+        commodityPackingFactor: 0.9,
+      };
 
       const looseDh = calculateHydraulicDiameter(looseConfig);
       const denseDh = calculateHydraulicDiameter(denseConfig);
@@ -153,11 +160,17 @@ describe("Flow Properties Calculations", () => {
      */
     it("handles boundary conditions appropriately", () => {
       // Test with minimum practical packing (0.1)
-      const minPackingConfig = { ...testZonalConfig, packingFactor: 0.1 };
+      const minPackingConfig: ZonalConfig = {
+        ...testZonalConfig,
+        commodityPackingFactor: 0.1,
+      };
       expect(calculateHydraulicDiameter(minPackingConfig)).to.be.finite;
 
       // Test with maximum practical packing (0.95)
-      const maxPackingConfig = { ...testZonalConfig, packingFactor: 0.95 };
+      const maxPackingConfig: ZonalConfig = {
+        ...testZonalConfig,
+        commodityPackingFactor: 0.95,
+      };
       expect(calculateHydraulicDiameter(maxPackingConfig)).to.be.finite;
 
       // Verify result is positive
@@ -393,7 +406,8 @@ describe("Flow Properties Calculations", () => {
       // Manual calculation
       const dynamicPressure = 0.5 * density * Math.pow(velocity, 2);
       const resistanceFactor =
-        FLOW_CONSTANTS.BASE_RESISTANCE * (1 + testZonalConfig.packingFactor!);
+        FLOW_CONSTANTS.BASE_RESISTANCE *
+        (1 + testZonalConfig.commodityPackingFactor);
       const expected = resistanceFactor * dynamicPressure;
 
       expect(dp).to.be.approximately(expected, 0.1);
@@ -442,8 +456,14 @@ describe("Flow Properties Calculations", () => {
     it("responds correctly to packing factor", () => {
       const velocity = 2.0;
       const density = 1.2;
-      const looseConfig = { ...testZonalConfig, packingFactor: 0.6 };
-      const denseConfig = { ...testZonalConfig, packingFactor: 0.9 };
+      const looseConfig: ZonalConfig = {
+        ...testZonalConfig,
+        commodityPackingFactor: 0.6,
+      };
+      const denseConfig: ZonalConfig = {
+        ...testZonalConfig,
+        commodityPackingFactor: 0.9,
+      };
 
       const dpLoose = calculatePressureDrop(velocity, density, looseConfig);
       const dpDense = calculatePressureDrop(velocity, density, denseConfig);
@@ -476,7 +496,7 @@ describe("Flow Properties Calculations", () => {
       const expected =
         testZonalConfig.zoneDimensions.y *
         testZonalConfig.zoneDimensions.z *
-        (1 - testZonalConfig.packingFactor!);
+        (1 - testZonalConfig.commodityPackingFactor);
       expect(area).to.be.approximately(expected, 0.001);
     });
 
@@ -511,7 +531,7 @@ describe("Flow Properties Calculations", () => {
       const expectedBaseArea =
         testZonalConfig.zoneDimensions.y *
         testZonalConfig.zoneDimensions.z *
-        (1 - testZonalConfig.packingFactor);
+        (1 - testZonalConfig.commodityPackingFactor);
       expect(baseArea).to.be.approximately(
         expectedBaseArea,
         testZonalConfig.tolerance.geometric
@@ -521,7 +541,7 @@ describe("Flow Properties Calculations", () => {
       const expectedScaledArea =
         scaledConfig.zoneDimensions.y *
         scaledConfig.zoneDimensions.z *
-        (1 - scaledConfig.packingFactor);
+        (1 - scaledConfig.commodityPackingFactor);
       expect(scaledArea).to.be.approximately(
         expectedScaledArea,
         testZonalConfig.tolerance.geometric
@@ -622,7 +642,7 @@ describe("Flow Properties Calculations", () => {
         testZonalConfig.zoneDimensions.x *
         testZonalConfig.zoneDimensions.y *
         testZonalConfig.zoneDimensions.z;
-      const produceArea = volume * testZonalConfig.packingFactor! * 50;
+      const produceArea = volume * testZonalConfig.commodityPackingFactor! * 50;
       const expected = wallArea + produceArea;
 
       expect(area).to.be.approximately(expected, 0.1);
@@ -675,7 +695,9 @@ describe("Flow Properties Calculations", () => {
         testZonalConfig.zoneDimensions.z;
       const specificSurfaceArea = 50; // m²/m³, from implementation
       const baseProduceArea =
-        baseVolume * testZonalConfig.packingFactor * specificSurfaceArea;
+        baseVolume *
+        testZonalConfig.commodityPackingFactor *
+        specificSurfaceArea;
       const expectedBaseArea = baseWallArea + baseProduceArea;
 
       // Verify base area calculation
@@ -691,7 +713,9 @@ describe("Flow Properties Calculations", () => {
       const doubleWallArea = baseWallArea * 4; // Wall area scales with length²
       const doubleVolume = baseVolume * 8; // Volume scales with length³
       const doubleProduceArea =
-        doubleVolume * doubleConfig.packingFactor * specificSurfaceArea;
+        doubleVolume *
+        doubleConfig.commodityPackingFactor *
+        specificSurfaceArea;
       const expectedDoubleArea = doubleWallArea + doubleProduceArea;
       const expectedRatio = expectedDoubleArea / expectedBaseArea;
 

@@ -1,241 +1,91 @@
 {
-  "startingConditions": {
-    "systemMetrics": {
-      "totalVolume": 27,
-      "productVolume": 20.25,
-      "airVolume": 6.75,
-      "productMass": 3037.5,
-      "heatTransferArea": 135,
-      "averageAirVelocity": 0.12093726379440664,
-      "pressureDrop": 237.3376064499874
+  "time": 0,
+  "zoneStates": [
+    [
+      [
+        {
+          "time": 0,
+          "velocity": 20.352989609551507,
+          "temperature": 20,
+          "pressure": 101425,
+          "density": 1.20527,
+          "massFlow": 51.51478035207871,
+          "energy": 136382071.64338586,
+          "development": 0
+        },
+        {
+          "time": 0,
+          "velocity": 20.352989609551507,
+          "temperature": 20,
+          "pressure": 101425,
+          "density": 1.20527,
+          "massFlow": 51.51478035207871,
+          "energy": 136382071.64338586,
+          "development": 0
+        }
+      ]
+    ],
+    [
+      [
+        {
+          "time": 0,
+          "velocity": 20.352989609551507,
+          "temperature": 20,
+          "pressure": 100000,
+          "density": 1.18834,
+          "massFlow": 50.791170512490325,
+          "energy": 136381570.5764693,
+          "development": 0
+        },
+        {
+          "time": 0,
+          "velocity": 20.352989609551507,
+          "temperature": 20,
+          "pressure": 100000,
+          "density": 1.18834,
+          "massFlow": 50.791170512490325,
+          "energy": 136381570.5764693,
+          "development": 0
+        }
+      ]
+    ]
+  ],
+  "averageTemperature": 20,
+  "coolingEffectiveness": 0,
+  "totalEnergyRemoved": 0,
+  "uniformityIndex": 0,
+  "commodity": {
+    "name": "Strawberry",
+    "density": 920,
+    "specificHeat": 3900,
+    "respirationRate": {
+      "referenceRate": 0.0162,
+      "temperatureSensitivity": 0.0865,
+      "referenceTemperature": 5
     },
-    "initialState": {
-      "Tp": 25,
-      "Ta": 25,
-      "wp": 0.92,
-      "wa": 0.008
-    }
+    "moistureContent": {
+      "initial": 0.908,
+      "waterActivity": 0.98,
+      "wetnessFactor": 0.85
+    },
+    "thermalConductivity": 0.386
   },
-  "timeSeries": [
-    {
-      "state": {
-        "Tp": 24.9992252518641,
-        "Ta": 19.04762656111705,
-        "wp": 0.919998756414245,
-        "wa": 0.007576870719480708
-      },
-      "calculations": {
-        "h": 1515.836675370679,
-        "Qresp": 40.29780544158682,
-        "Qconv": 0,
-        "Qevap": 9218.157910338155,
-        "mevap": 0.003777391730832936,
-        "Qcool": 26376,
-        "dTp": -0.0007747481358992566,
-        "dTa": -5.952373438882953,
-        "dwa": -0.00042312928051929205,
-        "dwp": -0.000001243585755006728,
-        "airMass": 8.26875,
-        "productMass": 3037.5
-      }
+  "packaging": {
+    "boxDimensions": {
+      "x": 0.6,
+      "y": 0.4,
+      "z": 0.15
     },
-    {
-      "state": {
-        "Tp": 24.898571143459577,
-        "Ta": 156.04607377951234,
-        "wp": 0.9199975037623114,
-        "wa": 0.007259416066773345
-      },
-      "calculations": {
-        "h": 1472.5314057954959,
-        "Qresp": 40.29509870217021,
-        "Qconv": 1183128.6582202124,
-        "Qevap": 9285.368565561932,
-        "mevap": 0.003804930248514241,
-        "Qcool": 26376,
-        "dTp": -0.1006541084045223,
-        "dTa": 136.99844721839528,
-        "dwa": -0.0003174546527073629,
-        "dwp": -0.00000125265193366724,
-        "airMass": 8.26875,
-        "productMass": 3037.5
-      }
+    "boxWallThickness": 0.002,
+    "boxThermalConductivity": 0.033,
+    "boxesPerPallet": 80,
+    "palletDimensions": {
+      "x": 1.2,
+      "y": 1,
+      "z": 3
     },
-    {
-      "state": {
-        "Tp": 25.731814783116707,
-        "Ta": -1052.809255862207,
-        "wp": 0.9199970211201215,
-        "wa": 0.006735884886022704
-      },
-      "calculations": {
-        "h": 557.718107520785,
-        "Qresp": 39.944984905988456,
-        "Qconv": -9874350.491794629,
-        "Qevap": 3577.970491242774,
-        "mevap": 0.0014660256518416585,
-        "Qcool": 26376,
-        "dTp": 0.8332436396571312,
-        "dTa": -1208.8553296417194,
-        "dwa": -0.0005235311807506411,
-        "dwp": -4.826421899067188e-7,
-        "airMass": 8.26875,
-        "productMass": 3037.5
-      }
-    },
-    {
-      "state": {
-        "Tp": 100.8150446514707,
-        "Ta": -107849.78642770587,
-        "wp": 0.9200029527012378,
-        "wa": 0.003982737266157247
-      },
-      "calculations": {
-        "h": -6108.462463532345,
-        "Qresp": 42.937490710034034,
-        "Qconv": -889410732.1310179,
-        "Qevap": -43936.75947985787,
-        "mevap": -0.018017177640590253,
-        "Qcool": 26376,
-        "dTp": 75.083229868354,
-        "dTa": -106796.97717184367,
-        "dwa": -0.0027531476198654563,
-        "dwp": 0.000005931581116243705,
-        "airMass": 8.26875,
-        "productMass": 3037.5
-      }
-    },
-    {
-      "state": {
-        "Tp": 237853.67452535414,
-        "Ta": -338674771.87625223,
-        "wp": 0.9271311955576953,
-        "wa": -2.6144637380766858
-      },
-      "calculations": {
-        "h": -193259.23651633016,
-        "Qresp": 28838.35016298582,
-        "Qconv": -2816430860973.565,
-        "Qevap": -48921811.35889481,
-        "mevap": -21.65203767648969,
-        "Qcool": 26376,
-        "dTp": 237752.85948070267,
-        "dTa": -338566922.08982456,
-        "dwa": -2.618446475342843,
-        "dwp": 0.007128242856457512,
-        "airMass": 8.26875,
-        "productMass": 3037.5
-      }
-    },
-    {
-      "state": {
-        "Tp": null,
-        "Ta": -1417552093923.9724,
-        "wp": 3.6379526240040523,
-        "wa": -997.7929898238363
-      },
-      "calculations": {
-        "h": -257670.16341374372,
-        "Qresp": null,
-        "Qconv": -11789235667167724,
-        "Qevap": 4652433206813.203,
-        "mevap": -8234.12008890581,
-        "Qcool": 26376,
-        "dTp": null,
-        "dTa": -1417213419152.0962,
-        "dwa": -995.1785260857596,
-        "dwp": 2.7108214284463568,
-        "airMass": 8.26875,
-        "productMass": 3037.5
-      }
-    },
-    {
-      "state": {
-        "Tp": null,
-        "Ta": null,
-        "wp": null,
-        "wa": null
-      },
-      "calculations": {
-        "h": null,
-        "Qresp": null,
-        "Qconv": null,
-        "Qevap": null,
-        "mevap": null,
-        "Qcool": 26376,
-        "dTp": null,
-        "dTa": null,
-        "dwa": null,
-        "dwp": null,
-        "airMass": 8.26875,
-        "productMass": 3037.5
-      }
-    },
-    {
-      "state": {
-        "Tp": null,
-        "Ta": null,
-        "wp": null,
-        "wa": null
-      },
-      "calculations": {
-        "h": null,
-        "Qresp": null,
-        "Qconv": null,
-        "Qevap": null,
-        "mevap": null,
-        "Qcool": 26376,
-        "dTp": null,
-        "dTa": null,
-        "dwa": null,
-        "dwp": null,
-        "airMass": 8.26875,
-        "productMass": 3037.5
-      }
-    },
-    {
-      "state": {
-        "Tp": null,
-        "Ta": null,
-        "wp": null,
-        "wa": null
-      },
-      "calculations": {
-        "h": null,
-        "Qresp": null,
-        "Qconv": null,
-        "Qevap": null,
-        "mevap": null,
-        "Qcool": 26376,
-        "dTp": null,
-        "dTa": null,
-        "dwa": null,
-        "dwp": null,
-        "airMass": 8.26875,
-        "productMass": 3037.5
-      }
-    },
-    {
-      "state": {
-        "Tp": null,
-        "Ta": null,
-        "wp": null,
-        "wa": null
-      },
-      "calculations": {
-        "h": null,
-        "Qresp": null,
-        "Qconv": null,
-        "Qevap": null,
-        "mevap": null,
-        "Qcool": 26376,
-        "dTp": null,
-        "dTa": null,
-        "dwa": null,
-        "dwp": null,
-        "airMass": 8.26875,
-        "productMass": 3037.5
-      }
-    }
-  ]
+    "palletBaseHeight": 0.15,
+    "boxMaterialDensity": 1200,
+    "boxSpecificHeat": 1700
+  }
 }

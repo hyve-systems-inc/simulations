@@ -41,32 +41,6 @@ export interface FlowProperties {
 }
 
 /**
- * Calculate hydraulic diameter for a zone
- * Reference: Section IV, 4.1 - "Local Turbulence"
- *
- * Physical basis:
- * - Treats flow path as equivalent circular duct
- * - Accounts for packing effects on flow area
- * - Uses wetted perimeter concept
- *
- * Dh = 4A/P where:
- * - A = flow area = total area * (1 - packing factor)
- * - P = wetted perimeter
- *
- * @param config - Zonal configuration containing dimensions and packing factor
- * @returns Hydraulic diameter (m)
- */
-export function calculateHydraulicDiameter(config: ZonalConfig): number {
-  const crossSection = config.zoneDimensions.y * config.zoneDimensions.z;
-  const perimeter = 2 * (config.zoneDimensions.y + config.zoneDimensions.z);
-  const packingFactor = config.packingFactor || 0.8;
-
-  // Effective flow area accounting for packing
-  const effectiveArea = crossSection * (1 - packingFactor);
-  return (4 * effectiveArea) / perimeter;
-}
-
-/**
  * Calculate bulk flow velocity from mass flow rate
  * Reference: Section II, 2.2 - "Air Energy Balance"
  *
@@ -134,39 +108,6 @@ export function calculateTurbulence(
 ): number {
   const turbulence = 0.16 * Math.pow(reynolds, -0.125);
   return significant(turbulence, precision);
-}
-
-/**
- * Calculate convective heat transfer coefficient
- * Reference: Section III, 3.2 - "Convective Heat Transfer"
- *
- * Uses Dittus-Boelter correlation:
- * Nu = 0.023 * Re^0.8 * Pr^0.4
- * h = Nu * k/D
- *
- * Valid for:
- * - Turbulent flow (Re > 10000)
- * - 0.7 < Pr < 160
- * - Fully developed flow
- *
- * @param reynolds - Reynolds number
- * @param prandtl - Prandtl number
- * @param conductivity - Thermal conductivity (W/(m·K))
- * @param diameter - Hydraulic diameter (m)
- * @returns Heat transfer coefficient (W/m²K)
- */
-export function calculateHeatTransfer(
-  reynolds: number,
-  prandtl: number,
-  conductivity: number,
-  diameter: number
-): number {
-  const nusselt =
-    FLOW_CONSTANTS.NUSSELT_COEFF *
-    Math.pow(reynolds, FLOW_CONSTANTS.REYNOLDS_EXP) *
-    Math.pow(prandtl, FLOW_CONSTANTS.PRANDTL_EXP);
-
-  return (nusselt * conductivity) / diameter;
 }
 
 /**
@@ -246,29 +187,11 @@ export function calculatePressureDrop(
   config: ZonalConfig
 ): number {
   // Simple correction for packing density
-  const packingEffect = config.packingFactor || 0.8;
+  const packingEffect = config.containerFillFactor!;
   const resistanceFactor = FLOW_CONSTANTS.BASE_RESISTANCE * (1 + packingEffect);
 
   const dynamicPressure = 0.5 * density * Math.pow(velocity, 2);
   return resistanceFactor * dynamicPressure;
-}
-
-/**
- * Calculate cross-sectional area available for flow
- * Reference: Section IV - "Flow distribution patterns across container"
- *
- * Accounts for:
- * - Geometric cross-section
- * - Packing factor reduction
- * - Produce arrangement effects
- *
- * @param config - Zone configuration
- * @returns Available flow area (m²)
- */
-export function calculateFlowArea(config: ZonalConfig): number {
-  const totalArea = config.zoneDimensions.y * config.zoneDimensions.z;
-  const packingFactor = config.packingFactor || 0.8;
-  return totalArea * (1 - packingFactor);
 }
 
 /**
@@ -343,11 +266,150 @@ export function calculateHeatTransferArea(config: ZonalConfig): number {
     config.zoneDimensions.x;
 
   // Produce surface area based on packing
-  const packingFactor = config.packingFactor || 0.8;
+  const packingFactor = config.containerFillFactor!;
   const volume =
     config.zoneDimensions.x * config.zoneDimensions.y * config.zoneDimensions.z;
   const specificSurfaceArea = 50; // m²/m³, typical for packed produce
   const produceArea = volume * packingFactor * specificSurfaceArea;
 
   return wallArea + produceArea;
+}
+
+/**
+ * Calculate cross-sectional area available for flow
+ * Reference: Section IV - "Flow distribution patterns across container"
+ *
+ * Accounts for:
+ * - Geometric cross-section
+ * - Packing factor reduction
+ * - Produce arrangement effects
+ *
+ * @param config - Zone configuration
+ * @returns Available flow area (m²)
+ * @throws Error if packing factor is invalid
+ */
+export function calculateFlowArea(config: ZonalConfig): number {
+  // Validate packing factor
+  if (
+    !config.containerFillFactor ||
+    config.containerFillFactor < 0 ||
+    config.containerFillFactor >= 1
+  ) {
+    throw new Error(
+      `Invalid packing factor: ${config.containerFillFactor}. Must be between 0 and 1`
+    );
+  }
+
+  // Calculate total cross-sectional area
+  const totalArea = Math.abs(config.zoneDimensions.y * config.zoneDimensions.z);
+
+  // Calculate available flow area
+  const flowArea = totalArea * (1 - config.containerFillFactor);
+
+  if (flowArea <= 0) {
+    throw new Error(
+      `Invalid flow area calculated: ${flowArea}. Check zone dimensions and packing factor.`
+    );
+  }
+
+  return flowArea;
+}
+
+/**
+ * Calculate hydraulic diameter for a zone
+ * Reference: Section IV, 4.1 - "Local Turbulence"
+ *
+ * Physical basis:
+ * - Treats flow path as equivalent circular duct
+ * - Accounts for packing effects on flow area
+ * - Uses wetted perimeter concept
+ *
+ * Dh = 4A/P where:
+ * - A = flow area = total area * (1 - packing factor)
+ * - P = wetted perimeter
+ *
+ * @param config - Zonal configuration containing dimensions and packing factor
+ * @returns Hydraulic diameter (m)
+ */
+export function calculateHydraulicDiameter(config: ZonalConfig): number {
+  // Validate dimensions
+  if (config.zoneDimensions.y <= 0 || config.zoneDimensions.z <= 0) {
+    throw new Error("Zone dimensions must be positive");
+  }
+
+  const crossSection = Math.abs(
+    config.zoneDimensions.y * config.zoneDimensions.z
+  );
+  const perimeter = 2 * (config.zoneDimensions.y + config.zoneDimensions.z);
+
+  // Validate packing factor
+  if (config.containerFillFactor! < 0 || config.containerFillFactor! >= 1) {
+    throw new Error(
+      `Invalid packing factor: ${config.containerFillFactor!}. Must be between 0 and 1`
+    );
+  }
+
+  // Calculate effective flow area
+  const effectiveArea = crossSection * (1 - config.containerFillFactor!);
+  const diameter = (4 * effectiveArea) / perimeter;
+
+  if (diameter <= 0) {
+    throw new Error(`Invalid hydraulic diameter calculated: ${diameter}`);
+  }
+
+  return diameter;
+}
+
+/**
+ * Calculate convective heat transfer coefficient
+ * Reference: Section III, 3.2 - "Convective Heat Transfer"
+ *
+ * Heat transfer correlations depend on Reynolds number magnitude
+ * but work the same regardless of flow direction
+ *
+ * Uses Dittus-Boelter correlation:
+ * Nu = 0.023 * Re^0.8 * Pr^0.4
+ * h = Nu * k/D
+ *
+ * Valid for:
+ * - Turbulent flow (Re > 10000)
+ * - 0.7 < Pr < 160
+ * - Fully developed flow
+ *
+ * @param reynolds - Reynolds number
+ * @param prandtl - Prandtl number
+ * @param conductivity - Thermal conductivity (W/(m·K))
+ * @param diameter - Hydraulic diameter (m)
+ * @returns Heat transfer coefficient (W/m²K)
+ */
+export function calculateHeatTransfer(
+  reynolds: number,
+  prandtl: number,
+  conductivity: number,
+  diameter: number
+): number {
+  // Use Reynolds number magnitude for correlation
+  const reAbs = Math.abs(reynolds);
+
+  // Different correlations based on flow regime
+  let nusselt: number;
+
+  if (reAbs < 2300) {
+    // Laminar flow - use constant Nu for developed flow
+    nusselt = 3.66;
+  } else if (reAbs < 10000) {
+    // Transition regime - use modified Gnielinski correlation
+    const f = 0.079 * Math.pow(reAbs, -0.25); // Friction factor
+    nusselt =
+      ((f / 8) * (reAbs - 1000) * prandtl) /
+      (1 + 12.7 * Math.sqrt(f / 8) * (Math.pow(prandtl, 2 / 3) - 1));
+  } else {
+    // Fully turbulent - use Dittus-Boelter
+    nusselt =
+      FLOW_CONSTANTS.NUSSELT_COEFF *
+      Math.pow(reAbs, FLOW_CONSTANTS.REYNOLDS_EXP) *
+      Math.pow(prandtl, FLOW_CONSTANTS.PRANDTL_EXP);
+  }
+
+  return (nusselt * conductivity) / diameter;
 }
