@@ -1,202 +1,163 @@
-import { Cube } from "./cube/modelV2/cube.js";
+import { randomWithinTolerance } from "./lib.js";
 import {
-  SystemParameters,
-  SystemState,
-} from "./cube/modelV2/systemEvolution.js";
-import dotenv from "dotenv";
-dotenv.config();
+  Container,
+  Dimensions,
+  ThermalState,
+  ProductProperties,
+} from "./models/Container.js";
+import { Layer, Orientation } from "./models/Layer.js";
+import { Pallet } from "./models/Pallet.js";
 
-function randomTemp(base: number, variation: number): number {
-  return base + (Math.random() * 2 - 1) * variation;
+interface ContainerProps {
+  dimensions: Dimensions;
+  thermalState: ThermalState;
+  productProperties: ProductProperties;
+}
+
+const cilantroProps: ContainerProps = {
+  dimensions: {
+    x: 0.35, // 35cm length
+    y: 0.25, // 25cm width
+    z: 0.2, // 20cm height
+  },
+  thermalState: {
+    temperature: 20,
+    moisture: 0.85, // Higher moisture content for fresh herbs
+  },
+  productProperties: {
+    specificHeat: 3900, // J/(kg·K) - typical for leafy greens
+    waterActivity: 0.98, // High water activity for fresh herbs
+    mass: 5, // 5kg per box
+    surfaceArea: 0.5, // m² - surface area for heat transfer
+    respiration: {
+      baseRate: 0.03, // Higher respiration rate for fresh herbs
+      temperatureCoeff: 0.12,
+      referenceTemp: 5, // 5°C reference temp for fresh herbs
+      respirationHeat: 2200,
+    },
+  },
+};
+
+/**
+ * Creates a pallet of cilantro boxes with specified configuration
+ */
+function createPallet(
+  layerCount: number = 5,
+  boxesPerRow: number = 3,
+  rowsPerLayer: number = 2,
+  containerProps: ContainerProps
+): Pallet | undefined {
+  const { dimensions, thermalState, productProperties } = containerProps;
+  try {
+    // Create standard pallet (48" x 40")
+    const pallet = new Pallet(1.2, 1.0, layerCount);
+
+    // Add layers
+    for (let layerIndex = 0; layerIndex < layerCount; layerIndex++) {
+      const layer = new Layer(1.2, 1.0);
+
+      // Add rows to layer
+      for (let rowIndex = 0; rowIndex < rowsPerLayer; rowIndex++) {
+        const success = layer.addRow(rowIndex, 0.25); // 25cm row height
+        if (!success) {
+          console.error(`Failed to add row ${rowIndex} to layer ${layerIndex}`);
+          return undefined;
+        }
+
+        // Add boxes to row
+        for (let boxIndex = 0; boxIndex < boxesPerRow; boxIndex++) {
+          const box = new Container(
+            dimensions,
+            {
+              ...thermalState,
+              temperature: randomWithinTolerance(thermalState.temperature, 1),
+            },
+            productProperties
+          );
+          const success = layer.addContainerToRow(
+            rowIndex,
+            box,
+            Orientation.LENGTHWISE_X
+          );
+          if (!success) {
+            console.error(
+              `Failed to add box ${boxIndex} to row ${rowIndex} in layer ${layerIndex}`
+            );
+            return undefined;
+          }
+        }
+      }
+
+      const success = pallet.addLayer(layer);
+      if (!success) {
+        console.error(`Failed to add layer ${layerIndex} to pallet`);
+        return undefined;
+      }
+    }
+
+    return pallet;
+  } catch (error) {
+    console.error("Error creating pallet:", error);
+    return undefined;
+  }
 }
 
 /**
- * Debug function to analyze energy flows
+ * Utility to print the current state of a pallet
  */
-export function debugEnergyFlows(state: SystemState, params: SystemParameters) {
-  // 1. Calculate total cooling capacity
-  const sensibleCooling =
-    params.airFlow *
-    params.airSpecificHeat *
-    (state.airTemp[0] - params.coilTemp);
+function debugPallet(pallet: Pallet) {
+  const layers = pallet.getLayers();
+  console.log("\nCilantro Pallet State:");
+  console.log(`Total Layers: ${layers.length}`);
 
-  // 2. Calculate heat flows for first zone as example
-  const airTemp = state.airTemp[0];
-  const productTemp = state.productTemp[0][0];
-  const productMass = params.productMass[0][0];
+  // Calculate total mass
+  let totalMass = 0;
 
-  // Respiration heat (expected to be positive)
-  const respHeat =
-    params.respirationRate *
-    Math.exp(
-      params.respirationTempCoeff * (productTemp - params.respirationRefTemp)
-    ) *
-    productMass *
-    params.respirationEnthalpy;
+  layers.forEach((layer, layerIndex) => {
+    console.log(`\nLayer ${layerIndex + 1}:`);
+    const containers = layer.getContainers();
+    console.log(`Boxes in layer: ${containers.length}`);
 
-  // Convective heat transfer (positive when product is warmer than air)
-  const convHeat =
-    params.baseHeatTransfer *
-    params.productArea[0][0] *
-    (productTemp - airTemp);
+    containers.forEach((container, containerIndex) => {
+      const state = container.container.getThermalState();
+      const properties = container.container.getProductProperties();
+      totalMass += properties.mass;
 
-  // Net energy flow
-  const netFlow = respHeat - convHeat - sensibleCooling;
+      console.log(`Box ${containerIndex + 1}:`);
+      console.log(
+        `  Position: (${container.position.x.toFixed(
+          2
+        )}m, ${container.position.y.toFixed(2)}m)`
+      );
+      console.log(`  Temperature: ${state.temperature.toFixed(1)}°C`);
+      console.log(`  Moisture Content: ${(state.moisture * 100).toFixed(1)}%`);
+    });
+  });
 
-  return {
-    temps: {
-      product: productTemp,
-      air: airTemp,
-      coil: params.coilTemp,
-    },
-    flows: {
-      respiration: respHeat,
-      convection: convHeat,
-      cooling: sensibleCooling,
-      net: netFlow,
-    },
-    powers: {
-      actual: state.coolingPower,
-      available: params.maxCoolingPower,
-      rated: params.ratedPower,
-    },
-  };
+  console.log("\nPallet Summary:");
+  console.log(`Total Boxes: ${pallet.getAllContainerStates().length}`);
+  console.log(`Total Mass: ${totalMass.toFixed(1)} kg`);
+
+  // Get temperature statistics
+  const tempStats = pallet.getTemperatureStats();
+  console.log("\nTemperature Statistics:");
+  console.log(`  Average: ${tempStats.average.toFixed(1)}°C`);
+  console.log(
+    `  Range: ${tempStats.min.toFixed(1)}°C to ${tempStats.max.toFixed(1)}°C`
+  );
+
+  // Calculate total respiration heat
+  const totalHeat = pallet.calculateTotalRespirationHeat();
+  console.log(`\nTotal Respiration Heat: ${totalHeat.toFixed(1)} W`);
 }
 
-/**
- * Initialize a storage cube for cilantro with specific parameters
- * Container: 2.5m x 2.5m x 2.5m
- * Pallets: 4x (1.2m x 1m x 2.13m(7ft))
- * Product: Fresh cut cilantro in cardboard boxes
- * Initial temp: 18°C ± 1°C
- * Cooling capacity: 90,000 BTU
- */
-
-// Calculate zones and layers based on physical arrangement
-const zones = 2; // Split length into 2 zones
-const layers = 3; // Split height into 3 layers for better resolution
-
-// Initialize system parameters
-const params: SystemParameters = {
-  // Physical dimensions
-  zones,
-  layers,
-  containerLength: 2.5,
-  containerWidth: 2.5,
-  containerHeight: 2.5,
-
-  // Product properties - based on typical values for leafy greens
-  productMass: Array(zones)
-    .fill(0)
-    .map(
-      () => Array(layers).fill(100) // Approximately 100kg per section
-    ),
-  productArea: Array(zones)
-    .fill(0)
-    .map(
-      () => Array(layers).fill(1.2) // Surface area per section in m²
-    ),
-  specificHeat: 3900, // J/(kg·K) for leafy vegetables
-  waterActivity: 0.98, // High for fresh cilantro
-  respirationRate: 0.15, // Higher than average due to fresh cut
-  respirationTempCoeff: 0.1,
-  respirationRefTemp: 5, // Reference temp for respiration
-  respirationEnthalpy: 250,
-
-  // Air properties
-  airMass: Array(zones).fill(2.5), // Approximate air mass per zone
-  airFlow: 0.5, // kg/s - moderate flow rate
-  airSpecificHeat: 1006, // J/(kg·K)
-
-  // Heat transfer properties
-  baseHeatTransfer: 25, // W/(m²·K)
-  positionFactor: Array(zones)
-    .fill(0)
-    .map(
-      () =>
-        Array(layers)
-          .fill(0)
-          .map((_, j) => 1 - j * 0.2) // Decreasing effectiveness with height
-    ),
-  evaporativeMassTransfer: 0.008, // m/s
-  surfaceWetness: 0.9, // High for fresh product
-
-  // Cooling system
-  maxCoolingPower: 26_392.96, // 90,000 BTU in Watts
-  ratedPower: 26_392.96, // Same as max for simplicity
-  coilTemp: 2, // °C - Slightly above freezing
-
-  // Control parameters
-  TCPITarget: 0.9,
-  alpha: 0.2,
-
-  // Environmental parameters
-  pressure: 101325, // Standard atmospheric pressure
-  wallHeatTransfer: Array(zones).fill(50), // Moderate insulation
-};
-
-// Initialize system state
-const state: SystemState = {
-  // Initialize product temperatures with random variation
-  productTemp: Array(zones)
-    .fill(0)
-    .map(() =>
-      Array(layers)
-        .fill(0)
-        .map(() => randomTemp(18, 1))
-    ),
-
-  // Initialize product moisture (typical for fresh cilantro)
-  productMoisture: Array(zones)
-    .fill(0)
-    .map(() => Array(layers).fill(0.9)),
-
-  // Initialize air conditions
-  airTemp: Array(zones).fill(18),
-  airHumidity: Array(zones).fill(0.012), // High initial humidity
-
-  // Initialize control variables
-  TCPI: 0.9,
-  coolingPower: 0, // Start with cooling off
-  t: 0,
-};
-
-// Example usage and validation
-const cube = new Cube(state, params);
-const validation = cube.validateState();
-console.log("Initial state validation:", validation);
-
-// Monitor initial conditions
-const energyBalance = cube.getEnergyBalance();
-console.log("Initial energy balance:", energyBalance);
-
-const moistureBalance = cube.getMoistureBalance();
-console.log("Initial moisture balance:", moistureBalance);
-
-const metrics = cube.getPerformanceMetrics();
-console.log("Initial performance metrics:", metrics);
-
-const getAverageTemp = () =>
-  cube
-    .getCurrentState()
-    .productTemp.flat()
-    .reduce((a, b) => a + b) /
-  (cube.getParameters().zones * cube.getParameters().layers);
-
-const initialAverageTemp = getAverageTemp();
-
-for (let i = 0; i < Number(process.env.STEPS!); i++) {
-  cube.nextDt();
-
-  const currentAverageTemp = getAverageTemp();
-
-  const stateSummary = {
-    time: cube.getCurrentState().t,
-    avgTemp: currentAverageTemp,
-    cumulativeDt: Math.abs(initialAverageTemp - currentAverageTemp),
-    coolingPower: cube.getCurrentState().coolingPower,
-    TCPI: cube.getCurrentState().TCPI,
-  };
-  // console.log(debugEnergyFlows(cube.getCurrentState(), params));
-  console.log(stateSummary);
+// Example usage:
+const cilandroPallet = createPallet(5, 3, 2, cilantroProps);
+if (cilandroPallet) {
+  console.log("Successfully created pallet");
+  debugPallet(cilandroPallet);
+} else {
+  console.log("Failed to create pallet");
 }
+
+export { createPallet, debugPallet };
