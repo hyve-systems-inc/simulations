@@ -1,3 +1,26 @@
+import clamp from "lodash.clamp";
+/**
+ * Physical constants used in calculations
+ */
+export const CONSTANTS = {
+  R_VAPOR: 461.5, // Gas constant for water vapor (J/kg·K)
+  LATENT_HEAT: 2.45e6, // Latent heat of vaporization (J/kg)
+  LEWIS_NUMBER: 0.845, // Lewis number for air-water vapor mixture
+  AIR_PRESSURE: 101325, // Standard atmospheric pressure (Pa)
+  MIN_REALISTIC_TEMP: -50, // Minimum realistic temperature (°C)
+  MAX_REALISTIC_TEMP: 100, // Maximum realistic temperature (°C)
+} as const;
+
+/**
+ * Interface for heat and mass transfer calculation results
+ * Based on Section III of the mathematical model
+ */
+export interface HeatTransferResult {
+  convectiveHeat: number; // W, Qconv,i,j
+  evaporativeHeat: number; // W, Qevap,i,j
+  moistureChange: number; // kg/s, mevap,i,j
+}
+
 /**
  * Represents the physical dimensions of a container in meters.
  */
@@ -118,6 +141,169 @@ export class Container {
   }
 
   /**
+   * Calculates convective and evaporative heat transfer between the container and surrounding air.
+   * Implements equations from Section III.2 and III.3 of the mathematical model:
+   * - Convective heat: Qconv,i,j = hi,j * Ap,i,j * (Tp,i,j - Ta,i)
+   * - Moisture transfer: mevap,i,j = (hm,i,j * Ap,i,j * fw * VPD)/(461.5 * (Tp,i,j + 273.15))
+   * - Evaporative heat: Qevap,i,j = mevap,i,j * λ
+   *
+   * @param airTemp - Air temperature in °C. Must be between -50°C and 100°C.
+   * @param airRelativeHumidity - Air relative humidity as a decimal between 0 and 1.
+   *                             Represents the ratio of partial vapor pressure to saturation vapor pressure.
+   * @param heatTransferCoeff - Convective heat transfer coefficient in W/(m²·K).
+   *                           Typically ranges from 10-50 W/(m²·K) for forced convection.
+   *
+   * @returns {HeatTransferResult} Object containing:
+   *          - convectiveHeat: Rate of convective heat transfer in Watts (positive = heating the product)
+   *          - evaporativeHeat: Rate of evaporative heat transfer in Watts (positive = evaporative cooling)
+   *          - moistureChange: Rate of moisture transfer in kg/s (positive = evaporation from product)
+   *
+   * @throws {Error} If airRelativeHumidity is outside the range [0,1]
+   * @throws {Error} If heatTransferCoeff is negative
+   *
+   * @example
+   * const result = container.calculateHeatTransfer(
+   *   5,    // 5°C air temperature
+   *   0.8,  // 80% relative humidity
+   *   25    // 25 W/(m²·K) heat transfer coefficient
+   * );
+   */
+  public calculateHeatTransfer(
+    airTemp: number,
+    airRelativeHumidity: number,
+    heatTransferCoeff: number
+  ): HeatTransferResult {
+    // Input validation
+    if (airRelativeHumidity < 0 || airRelativeHumidity > 1) {
+      throw new Error("Air relative humidity must be between 0 and 1");
+    }
+    if (heatTransferCoeff < 0) {
+      throw new Error("Heat transfer coefficient cannot be negative");
+    }
+    // Get current product state
+    const productTemp = this.thermalState.temperature;
+    const productWaterActivity = this.productProperties.waterActivity;
+
+    // Calculate vapor pressures using relative humidity/water activity
+    const productSatVaporPressure =
+      this.calculateSaturatedVaporPressure(productTemp);
+    const airSatVaporPressure = this.calculateSaturatedVaporPressure(airTemp);
+
+    const productVaporPressure = productSatVaporPressure * productWaterActivity;
+    const airVaporPressure = airSatVaporPressure * airRelativeHumidity;
+
+    // Calculate vapor pressure deficit (product to air gradient)
+    const VPD = productVaporPressure - airVaporPressure;
+
+    // Calculate convective heat transfer
+    const surfaceArea = this.productProperties.surfaceArea;
+    const convectiveHeat =
+      heatTransferCoeff * surfaceArea * (productTemp - airTemp);
+
+    // Calculate mass transfer coefficient using Lewis analogy
+    const massTransferCoeff =
+      heatTransferCoeff /
+      (this.productProperties.specificHeat *
+        Math.pow(CONSTANTS.LEWIS_NUMBER, 2 / 3));
+
+    // Calculate moisture transfer (positive = evaporation)
+    const moistureChange =
+      (massTransferCoeff * surfaceArea * VPD) /
+      (CONSTANTS.R_VAPOR * (productTemp + 273.15));
+
+    // Calculate evaporative heat transfer
+    const evaporativeHeat = moistureChange * CONSTANTS.LATENT_HEAT;
+
+    return {
+      convectiveHeat,
+      evaporativeHeat,
+      moistureChange,
+    };
+  }
+
+  /**
+   * Updates container state based on energy and mass balance
+   * Implementation of conservation equations from Section II.1 and II.2:
+   * mp,i,j * cp * dTp,i,j/dt = Qresp,i,j - Qconv,i,j - Qevap,i,j
+   * dwp,i,j/dt = -mevap,i,j/mp,i,j
+   */
+  public updateState(
+    energyChange: number, // Net energy change in Joules
+    moistureChange: number // Net moisture change in kg
+  ): void {
+    // Calculate temperature change
+    const mass = this.productProperties.mass;
+    const specificHeat = this.productProperties.specificHeat;
+    const deltaTemp = energyChange / (mass * specificHeat);
+
+    // Calculate new temperature
+    const newTemp = this.thermalState.temperature + deltaTemp;
+
+    // Calculate moisture content change
+    const deltaMoisture = moistureChange / mass;
+    const newMoisture = this.thermalState.moisture + deltaMoisture;
+
+    // Update state with constraints
+    this.updateTemperature(
+      clamp(newTemp, CONSTANTS.MIN_REALISTIC_TEMP, CONSTANTS.MAX_REALISTIC_TEMP)
+    );
+
+    this.updateMoisture(clamp(newMoisture, 0, 1));
+  }
+
+  /**
+   * Calculates the net energy change over a time step
+   * Combines all heat transfer mechanisms from Section III:
+   * - Respiration Heat (3.1)
+   * - Convective Heat Transfer (3.2)
+   * - Evaporative Cooling (3.3)
+   */
+  public calculateNetEnergyChange(
+    dt: number,
+    airTemp: number,
+    airHumidity: number,
+    heatTransferCoeff: number
+  ): { energyChange: number; moistureChange: number } {
+    // Calculate respiration heat
+    const respirationHeat = this.calculateRespirationHeat() * dt;
+
+    // Calculate convective and evaporative effects
+    const heatTransfer = this.calculateHeatTransfer(
+      airTemp,
+      airHumidity,
+      heatTransferCoeff
+    );
+
+    // Calculate net energy change
+    const energyChange =
+      respirationHeat -
+      (heatTransfer.convectiveHeat + heatTransfer.evaporativeHeat) * dt;
+
+    // Calculate net moisture change
+    const moistureChange = -heatTransfer.moistureChange * dt;
+
+    return { energyChange, moistureChange };
+  }
+
+  /**
+   * Gets the current energy content of the container
+   * Used for conservation validation
+   */
+  public getEnergyContent(): number {
+    const mass = this.productProperties.mass;
+    const specificHeat = this.productProperties.specificHeat;
+    return mass * specificHeat * (this.thermalState.temperature + 273.15);
+  }
+
+  /**
+   * Gets the current moisture content in kg
+   * Used for conservation validation
+   */
+  public getMoistureContent(): number {
+    return this.productProperties.mass * this.thermalState.moisture;
+  }
+
+  /**
    * Validates container dimensions according to physical constraints.
    * Basic physical requirement: all dimensions must be positive.
    */
@@ -163,5 +349,14 @@ export class Container {
     if (props.surfaceArea <= 0) {
       throw new Error("Surface area must be positive");
     }
+  }
+
+  /**
+   * Calculates saturated vapor pressure using the Magnus formula
+   * Implementation of equation in Section III.3:
+   * psat(T) = 610.78 * exp((17.27 * T)/(T + 237.3))
+   */
+  private calculateSaturatedVaporPressure(tempC: number): number {
+    return 610.78 * Math.exp((17.27 * tempC) / (tempC + 237.3));
   }
 }

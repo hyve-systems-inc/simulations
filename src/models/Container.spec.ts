@@ -263,3 +263,312 @@ describe("Container", () => {
     });
   });
 });
+
+describe("Container Physics", () => {
+  // Test fixtures
+  let standardDimensions: Dimensions;
+  let standardThermalState: ThermalState;
+  let standardProductProperties: ProductProperties;
+  let container: Container;
+
+  beforeEach(() => {
+    standardDimensions = {
+      x: 0.6, // 60cm
+      y: 0.4, // 40cm
+      z: 0.3, // 30cm
+    };
+
+    standardThermalState = {
+      temperature: 20, // 20°C
+      moisture: 0.5, // 0.5 kg water/kg dry matter
+    };
+
+    standardProductProperties = {
+      specificHeat: 3600, // J/(kg·K)
+      waterActivity: 0.95, // 0.95 (dimensionless)
+      mass: 10, // 10kg
+      surfaceArea: 1.5, // 1.5m²
+      respiration: {
+        baseRate: 0.01, // 0.01 W/kg
+        temperatureCoeff: 0.1, // 0.1 1/K
+        referenceTemp: 20, // 20°C
+        respirationHeat: 2000, // 2000 J/kg
+      },
+    };
+
+    container = new Container(
+      standardDimensions,
+      standardThermalState,
+      standardProductProperties
+    );
+  });
+
+  describe("Heat Transfer Calculations", () => {
+    it("should calculate convective heat transfer correctly", () => {
+      const airTemp = 5; // 5°C
+      const airHumidity = 0.8;
+      const heatTransferCoeff = 25; // 25 W/m²·K
+
+      const result = container.calculateHeatTransfer(
+        airTemp,
+        airHumidity,
+        heatTransferCoeff
+      );
+
+      // Expected convective heat = h * A * ΔT
+      const expectedConvective =
+        heatTransferCoeff *
+        standardProductProperties.surfaceArea *
+        (standardThermalState.temperature - airTemp);
+
+      expect(result.convectiveHeat).to.be.closeTo(expectedConvective, 0.1);
+    });
+
+    it("should calculate evaporative cooling correctly", () => {
+      const airTemp = 20; // Same as product temp
+      const airHumidity = 0.3; // Low humidity to ensure evaporation
+      const heatTransferCoeff = 25;
+
+      // Create a container with higher water activity to ensure evaporation
+      const highMoistureState = {
+        temperature: 20,
+        moisture: 0.95,
+      };
+
+      const container = new Container(standardDimensions, highMoistureState, {
+        ...standardProductProperties,
+        waterActivity: 0.98, // Higher water activity
+      });
+
+      const result = container.calculateHeatTransfer(
+        airTemp,
+        airHumidity,
+        heatTransferCoeff
+      );
+
+      // Should have positive evaporation rate due to water activity gradient
+      expect(result.moistureChange).to.be.greaterThan(0);
+      expect(result.evaporativeHeat).to.be.greaterThan(0);
+
+      // Additional verification of magnitudes
+      expect(result.evaporativeHeat).to.equal(
+        result.moistureChange * 2.45e6 // Latent heat of vaporization
+      );
+    });
+
+    // New test for vapor pressure gradient
+    it("should calculate correct evaporation direction based on vapor pressure gradient", () => {
+      // Test case 1: Environment favors evaporation
+      const dryAirResult = container.calculateHeatTransfer(
+        20, // Same temperature
+        0.3, // Low humidity
+        25
+      );
+      expect(dryAirResult.moistureChange).to.be.greaterThan(0);
+
+      // Test case 2: Environment favors condensation
+      const humidAirResult = container.calculateHeatTransfer(
+        20, // Same temperature
+        0.99, // Very high humidity
+        25
+      );
+      expect(humidAirResult.moistureChange).to.be.lessThan(0);
+
+      // Test case 3: No moisture transfer at equilibrium
+      const equilibriumResult = container.calculateHeatTransfer(
+        20, // Same temperature
+        0.95, // Matches product water activity
+        25
+      );
+      expect(Math.abs(equilibriumResult.moistureChange)).to.be.closeTo(
+        0,
+        0.0001
+      );
+    });
+
+    it("should handle zero heat transfer coefficient", () => {
+      const result = container.calculateHeatTransfer(5, 0.8, 0);
+      expect(result.convectiveHeat).to.equal(0);
+      expect(result.evaporativeHeat).to.equal(0);
+      expect(result.moistureChange).to.equal(0);
+    });
+  });
+
+  describe("State Updates", () => {
+    it("should update temperature correctly based on energy input", () => {
+      const dt = 1; // 1 second
+      const energyChange = 3600; // 1 degree worth of energy
+      const moistureChange = 0;
+
+      const initialTemp = container.getThermalState().temperature;
+      container.updateState(energyChange, moistureChange);
+
+      // ΔT = Q/(m*cp)
+      const expectedTemp =
+        initialTemp +
+        energyChange /
+          (standardProductProperties.mass *
+            standardProductProperties.specificHeat);
+
+      expect(container.getThermalState().temperature).to.be.closeTo(
+        expectedTemp,
+        0.001
+      );
+    });
+
+    it("should update moisture content correctly", () => {
+      const dt = 1;
+      const energyChange = 0;
+      const moistureChange = -0.1; // 100g water loss
+
+      const initialMoisture = container.getThermalState().moisture;
+      container.updateState(energyChange, moistureChange);
+
+      // Δw = Δm/m
+      const expectedMoisture =
+        initialMoisture + moistureChange / standardProductProperties.mass;
+
+      expect(container.getThermalState().moisture).to.be.closeTo(
+        expectedMoisture,
+        0.001
+      );
+    });
+
+    it("should enforce temperature bounds", () => {
+      const dt = 1;
+      const largeEnergyChange = 1e6; // Very large energy input
+      const moistureChange = 0;
+
+      container.updateState(largeEnergyChange, moistureChange);
+      expect(container.getThermalState().temperature).to.be.lessThanOrEqual(
+        100
+      );
+
+      container.updateState(-largeEnergyChange, moistureChange);
+      expect(container.getThermalState().temperature).to.be.greaterThanOrEqual(
+        -50
+      );
+    });
+
+    it("should enforce moisture content bounds", () => {
+      const dt = 1;
+      const energyChange = 0;
+
+      // Test upper bound
+      container.updateState(energyChange, 100);
+      expect(container.getThermalState().moisture).to.be.lessThanOrEqual(1.0);
+
+      // Test lower bound
+      container.updateState(energyChange, -100);
+      expect(container.getThermalState().moisture).to.be.greaterThanOrEqual(0);
+    });
+  });
+
+  describe("Net Energy Change", () => {
+    it("should combine all heat transfer mechanisms", () => {
+      const dt = 1;
+      const airTemp = 5;
+      const airHumidity = 0.8;
+      const heatTransferCoeff = 25;
+
+      const { energyChange, moistureChange } =
+        container.calculateNetEnergyChange(
+          dt,
+          airTemp,
+          airHumidity,
+          heatTransferCoeff
+        );
+
+      // Should include respiration, convection, and evaporation
+      const respirationHeat = container.calculateRespirationHeat() * dt;
+      const heatTransfer = container.calculateHeatTransfer(
+        airTemp,
+        airHumidity,
+        heatTransferCoeff
+      );
+
+      const expectedEnergyChange =
+        respirationHeat -
+        (heatTransfer.convectiveHeat + heatTransfer.evaporativeHeat) * dt;
+
+      expect(energyChange).to.be.closeTo(expectedEnergyChange, 0.1);
+      expect(moistureChange).to.be.closeTo(
+        -heatTransfer.moistureChange * dt,
+        0.001
+      );
+    });
+
+    it("should respect energy conservation", () => {
+      const dt = 1;
+      const airTemp = 5;
+      const airHumidity = 0.8;
+      const heatTransferCoeff = 25;
+
+      const initialEnergy = container.getEnergyContent();
+      const initialMoisture = container.getMoistureContent();
+
+      const { energyChange, moistureChange } =
+        container.calculateNetEnergyChange(
+          dt,
+          airTemp,
+          airHumidity,
+          heatTransferCoeff
+        );
+
+      container.updateState(energyChange, moistureChange);
+
+      const finalEnergy = container.getEnergyContent();
+      const finalMoisture = container.getMoistureContent();
+
+      // Check energy conservation
+      expect(finalEnergy - initialEnergy).to.be.closeTo(energyChange, 0.1);
+
+      // Check mass conservation
+      expect(finalMoisture - initialMoisture).to.be.closeTo(
+        moistureChange,
+        0.001
+      );
+    });
+  });
+
+  describe("Content Calculations", () => {
+    it("should calculate energy content correctly", () => {
+      const expectedEnergy =
+        standardProductProperties.mass *
+        standardProductProperties.specificHeat *
+        (standardThermalState.temperature + 273.15); // Convert to Kelvin
+
+      expect(container.getEnergyContent()).to.be.closeTo(expectedEnergy, 0.1);
+    });
+
+    it("should calculate moisture content correctly", () => {
+      const expectedMoisture =
+        standardProductProperties.mass * standardThermalState.moisture;
+
+      expect(container.getMoistureContent()).to.be.closeTo(
+        expectedMoisture,
+        0.001
+      );
+    });
+
+    it("should track energy content changes", () => {
+      const initialEnergy = container.getEnergyContent();
+
+      // Add some energy
+      container.updateState(1000, 0);
+
+      const finalEnergy = container.getEnergyContent();
+      expect(finalEnergy - initialEnergy).to.be.closeTo(1000, 0.1);
+    });
+
+    it("should track moisture content changes", () => {
+      const initialMoisture = container.getMoistureContent();
+
+      // Remove some moisture
+      container.updateState(0, -0.1);
+
+      const finalMoisture = container.getMoistureContent();
+      expect(finalMoisture - initialMoisture).to.be.closeTo(-0.1, 0.001);
+    });
+  });
+});

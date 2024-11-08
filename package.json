@@ -20,6 +20,7 @@
     "chalk": "^5.3.0",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "lodash.clamp": "^4.0.3",
     "mathjs": "^13.2.0",
     "zod": "^3.23.8"
   },
@@ -27,6 +28,7 @@
     "@types/body-parser": "^1.19.5",
     "@types/chai": "^5.0.1",
     "@types/express": "^5.0.0",
+    "@types/lodash.clamp": "^4.0.9",
     "@types/mocha": "^10.0.9",
     "@types/node": "^22.7.4",
     "chai": "^5.1.2",
