@@ -1,4 +1,8 @@
-import { Dimensions, ProductProperties, ThermalState } from "../Container.js";
+import {
+  Dimensions,
+  ProductProperties,
+  ThermalState,
+} from "../Container/index.js";
 
 export interface ContainerProps {
   dimensions: Dimensions;

@@ -9,3 +9,7 @@ export function randomWithinTolerance(
   // Generate random number within range
   return min + Math.random() * (max - min);
 }
+
+export function precise(value: number, precision: number): number {
+  return Math.round(value * precision) / precision;
+}

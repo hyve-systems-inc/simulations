@@ -1,4 +1,5 @@
 import clamp from "lodash.clamp";
+
 /**
  * Physical constants used in calculations
  */
@@ -12,13 +13,22 @@ export const CONSTANTS = {
 } as const;
 
 /**
- * Interface for heat and mass transfer calculation results
- * Based on Section III of the mathematical model
+ * Instantaneous rates of heat and mass transfer for a container.
+ * These represent the current rates of energy and moisture movement.
  */
-export interface HeatTransferResult {
-  convectiveHeat: number; // W, Qconv,i,j
-  evaporativeHeat: number; // W, Qevap,i,j
-  moistureChange: number; // kg/s, mevap,i,j
+export interface HeatTransferRates {
+  convectiveHeatRate: number; // Rate of convective heat transfer (W)
+  evaporativeHeatRate: number; // Rate of evaporative cooling (W)
+  moistureTransferRate: number; // Rate of moisture transfer (kg/s)
+}
+
+/**
+ * Cumulative changes in energy and moisture over a time step.
+ * These represent the total transfers that occurred during dt.
+ */
+export interface HeatTransferChanges {
+  energyChange: number; // Total energy transferred (J)
+  moistureChange: number; // Total moisture transferred (kg)
 }
 
 /**
@@ -168,11 +178,11 @@ export class Container {
    *   25    // 25 W/(m²·K) heat transfer coefficient
    * );
    */
-  public calculateHeatTransfer(
+  public calculateHeatTransferRates(
     airTemp: number,
     airRelativeHumidity: number,
     heatTransferCoeff: number
-  ): HeatTransferResult {
+  ): HeatTransferRates {
     // Input validation
     if (airRelativeHumidity < 0 || airRelativeHumidity > 1) {
       throw new Error("Air relative humidity must be between 0 and 1");
@@ -197,7 +207,7 @@ export class Container {
 
     // Calculate convective heat transfer
     const surfaceArea = this.productProperties.surfaceArea;
-    const convectiveHeat =
+    const convectiveHeatRate =
       heatTransferCoeff * surfaceArea * (productTemp - airTemp);
 
     // Calculate mass transfer coefficient using Lewis analogy
@@ -207,17 +217,17 @@ export class Container {
         Math.pow(CONSTANTS.LEWIS_NUMBER, 2 / 3));
 
     // Calculate moisture transfer (positive = evaporation)
-    const moistureChange =
+    const moistureTransferRate =
       (massTransferCoeff * surfaceArea * VPD) /
       (CONSTANTS.R_VAPOR * (productTemp + 273.15));
 
     // Calculate evaporative heat transfer
-    const evaporativeHeat = moistureChange * CONSTANTS.LATENT_HEAT;
+    const evaporativeHeatRate = moistureTransferRate * CONSTANTS.LATENT_HEAT;
 
     return {
-      convectiveHeat,
-      evaporativeHeat,
-      moistureChange,
+      convectiveHeatRate,
+      evaporativeHeatRate,
+      moistureTransferRate,
     };
   }
 
@@ -263,12 +273,12 @@ export class Container {
     airTemp: number,
     airHumidity: number,
     heatTransferCoeff: number
-  ): { energyChange: number; moistureChange: number } {
+  ): HeatTransferChanges {
     // Calculate respiration heat
     const respirationHeat = this.calculateRespirationHeat() * dt;
 
     // Calculate convective and evaporative effects
-    const heatTransfer = this.calculateHeatTransfer(
+    const heatTransfer = this.calculateHeatTransferRates(
       airTemp,
       airHumidity,
       heatTransferCoeff
@@ -277,10 +287,10 @@ export class Container {
     // Calculate net energy change
     const energyChange =
       respirationHeat -
-      (heatTransfer.convectiveHeat + heatTransfer.evaporativeHeat) * dt;
+      (heatTransfer.convectiveHeatRate + heatTransfer.evaporativeHeatRate) * dt;
 
     // Calculate net moisture change
-    const moistureChange = -heatTransfer.moistureChange * dt;
+    const moistureChange = -heatTransfer.moistureTransferRate * dt;
 
     return { energyChange, moistureChange };
   }

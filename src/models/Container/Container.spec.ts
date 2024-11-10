@@ -4,111 +4,96 @@ import {
   Dimensions,
   ThermalState,
   ProductProperties,
-} from "./Container.js";
+} from "./index.js";
+
+export const constructContainerTestProps = () => ({
+  // Set up valid test data before each test
+  dimensions: {
+    x: 2.0, // 2 meters
+    y: 1.5, // 1.5 meters
+    z: 2.2, // 2.2 meters
+  },
+
+  thermalState: {
+    temperature: 20, // 20°C
+    moisture: 0.5, // 0.5 kg water/kg dry matter
+  },
+
+  productProperties: {
+    specificHeat: 3600, // 3600 J/(kg·K)
+    waterActivity: 0.95, // 0.95 (dimensionless)
+    mass: 1000, // 1000 kg
+    surfaceArea: 15, // 15 m²
+    respiration: {
+      baseRate: 0.01, // 0.01 W/kg
+      temperatureCoeff: 0.1, // 0.1 1/K
+      referenceTemp: 20, // 20°C
+      respirationHeat: 2000, // 2000 J/kg
+    },
+  },
+});
 
 describe("Container", () => {
   // Test fixtures
-  let validDimensions: Dimensions;
-  let validThermalState: ThermalState;
-  let validProductProperties: ProductProperties;
+  let dimensions: Dimensions;
+  let thermalState: ThermalState;
+  let productProperties: ProductProperties;
 
   beforeEach(() => {
     // Set up valid test data before each test
-    validDimensions = {
-      x: 2.0, // 2 meters
-      y: 1.5, // 1.5 meters
-      z: 2.2, // 2.2 meters
-    };
-
-    validThermalState = {
-      temperature: 20, // 20°C
-      moisture: 0.5, // 0.5 kg water/kg dry matter
-    };
-
-    validProductProperties = {
-      specificHeat: 3600, // 3600 J/(kg·K)
-      waterActivity: 0.95, // 0.95 (dimensionless)
-      mass: 1000, // 1000 kg
-      surfaceArea: 15, // 15 m²
-      respiration: {
-        baseRate: 0.01, // 0.01 W/kg
-        temperatureCoeff: 0.1, // 0.1 1/K
-        referenceTemp: 20, // 20°C
-        respirationHeat: 2000, // 2000 J/kg
-      },
-    };
+    const testProps = constructContainerTestProps();
+    dimensions = testProps.dimensions;
+    thermalState = testProps.thermalState;
+    productProperties = testProps.productProperties;
   });
 
   describe("Constructor", () => {
     it("should create a valid container with correct properties", () => {
       const container = new Container(
-        validDimensions,
-        validThermalState,
-        validProductProperties
+        dimensions,
+        thermalState,
+        productProperties
       );
-      expect(container.getDimensions()).to.deep.equal(validDimensions);
-      expect(container.getThermalState()).to.deep.equal(validThermalState);
-      expect(container.getProductProperties()).to.deep.equal(
-        validProductProperties
-      );
+      expect(container.getDimensions()).to.deep.equal(dimensions);
+      expect(container.getThermalState()).to.deep.equal(thermalState);
+      expect(container.getProductProperties()).to.deep.equal(productProperties);
     });
 
     it("should throw error for negative dimensions", () => {
-      const invalidDimensions = { ...validDimensions, x: -1 };
+      const indimensions = { ...dimensions, x: -1 };
       expect(
-        () =>
-          new Container(
-            invalidDimensions,
-            validThermalState,
-            validProductProperties
-          )
+        () => new Container(indimensions, thermalState, productProperties)
       ).to.throw("All dimensions must be positive");
     });
 
     it("should throw error for zero dimensions", () => {
-      const invalidDimensions = { ...validDimensions, y: 0 };
+      const indimensions = { ...dimensions, y: 0 };
       expect(
-        () =>
-          new Container(
-            invalidDimensions,
-            validThermalState,
-            validProductProperties
-          )
+        () => new Container(indimensions, thermalState, productProperties)
       ).to.throw("All dimensions must be positive");
     });
 
     it("should throw error for invalid temperature range", () => {
-      const invalidThermalState = { ...validThermalState, temperature: -60 };
+      const inthermalState = { ...thermalState, temperature: -60 };
       expect(
-        () =>
-          new Container(
-            validDimensions,
-            invalidThermalState,
-            validProductProperties
-          )
+        () => new Container(dimensions, inthermalState, productProperties)
       ).to.throw("Initial temperature out of realistic range");
     });
 
     it("should throw error for invalid moisture content", () => {
-      const invalidThermalState = { ...validThermalState, moisture: 1.5 };
+      const inthermalState = { ...thermalState, moisture: 1.5 };
       expect(
-        () =>
-          new Container(
-            validDimensions,
-            invalidThermalState,
-            validProductProperties
-          )
+        () => new Container(dimensions, inthermalState, productProperties)
       ).to.throw("Initial moisture content must be between 0 and 1");
     });
 
     it("should throw error for invalid product properties", () => {
       const invalidProductProps = {
-        ...validProductProperties,
+        ...productProperties,
         specificHeat: -100,
       };
       expect(
-        () =>
-          new Container(validDimensions, validThermalState, invalidProductProps)
+        () => new Container(dimensions, thermalState, invalidProductProps)
       ).to.throw("Specific heat must be positive");
     });
   });
@@ -117,42 +102,35 @@ describe("Container", () => {
     let container: Container;
 
     beforeEach(() => {
-      container = new Container(
-        validDimensions,
-        validThermalState,
-        validProductProperties
-      );
+      container = new Container(dimensions, thermalState, productProperties);
     });
 
     it("should return correct dimensions", () => {
-      const dimensions = container.getDimensions();
-      expect(dimensions).to.deep.equal(validDimensions);
+      const containerDimensions = container.getDimensions();
+      expect(containerDimensions).to.deep.equal(dimensions);
       // Verify immutability
-      dimensions.x = 999;
-      expect(container.getDimensions()).to.deep.equal(validDimensions);
+      containerDimensions.x = 999;
+      expect(container.getDimensions()).to.deep.equal(dimensions);
     });
 
     it("should return correct thermal state", () => {
-      const thermalState = container.getThermalState();
-      expect(thermalState).to.deep.equal(validThermalState);
+      const containerThermalState = container.getThermalState();
+      expect(containerThermalState).to.deep.equal(thermalState);
       // Verify immutability
-      thermalState.temperature = 999;
-      expect(container.getThermalState()).to.deep.equal(validThermalState);
+      containerThermalState.temperature = 999;
+      expect(container.getThermalState()).to.deep.equal(thermalState);
     });
 
     it("should return correct product properties", () => {
       const properties = container.getProductProperties();
-      expect(properties).to.deep.equal(validProductProperties);
+      expect(properties).to.deep.equal(productProperties);
       // Verify immutability
       properties.mass = 999;
-      expect(container.getProductProperties()).to.deep.equal(
-        validProductProperties
-      );
+      expect(container.getProductProperties()).to.deep.equal(productProperties);
     });
 
     it("should calculate correct volume", () => {
-      const expectedVolume =
-        validDimensions.x * validDimensions.y * validDimensions.z;
+      const expectedVolume = dimensions.x * dimensions.y * dimensions.z;
       expect(container.getVolume()).to.equal(expectedVolume);
     });
   });
@@ -161,11 +139,7 @@ describe("Container", () => {
     let container: Container;
 
     beforeEach(() => {
-      container = new Container(
-        validDimensions,
-        validThermalState,
-        validProductProperties
-      );
+      container = new Container(dimensions, thermalState, productProperties);
     });
 
     it("should update temperature within valid range", () => {
@@ -198,24 +172,38 @@ describe("Container", () => {
       );
     });
   });
+});
+
+describe("Container Physics", () => {
+  // Test fixtures
+  let dimensions: Dimensions;
+  let thermalState: ThermalState;
+  let productProperties: ProductProperties;
+  let container: Container;
+
+  beforeEach(() => {
+    // Set up valid test data before each test
+    const testProps = constructContainerTestProps();
+    dimensions = testProps.dimensions;
+    thermalState = testProps.thermalState;
+    productProperties = testProps.productProperties;
+
+    container = new Container(dimensions, thermalState, productProperties);
+  });
 
   describe("Respiration Heat Calculation", () => {
     let container: Container;
 
     beforeEach(() => {
-      container = new Container(
-        validDimensions,
-        validThermalState,
-        validProductProperties
-      );
+      container = new Container(dimensions, thermalState, productProperties);
     });
 
     it("should calculate correct respiration heat at reference temperature", () => {
       // At reference temperature, exp term = 1
       const expectedHeat =
-        validProductProperties.respiration.baseRate *
-        validProductProperties.mass *
-        validProductProperties.respiration.respirationHeat;
+        productProperties.respiration.baseRate *
+        productProperties.mass *
+        productProperties.respiration.respirationHeat;
       expect(container.calculateRespirationHeat()).to.be.closeTo(
         expectedHeat,
         0.001
@@ -223,18 +211,15 @@ describe("Container", () => {
     });
 
     it("should calculate increased respiration heat above reference temperature", () => {
-      const higherTemp = validProductProperties.respiration.referenceTemp + 10;
+      const higherTemp = productProperties.respiration.referenceTemp + 10;
       container.updateTemperature(higherTemp);
 
-      const tempDiff =
-        higherTemp - validProductProperties.respiration.referenceTemp;
+      const tempDiff = higherTemp - productProperties.respiration.referenceTemp;
       const expectedHeat =
-        validProductProperties.respiration.baseRate *
-        Math.exp(
-          validProductProperties.respiration.temperatureCoeff * tempDiff
-        ) *
-        validProductProperties.mass *
-        validProductProperties.respiration.respirationHeat;
+        productProperties.respiration.baseRate *
+        Math.exp(productProperties.respiration.temperatureCoeff * tempDiff) *
+        productProperties.mass *
+        productProperties.respiration.respirationHeat;
 
       expect(container.calculateRespirationHeat()).to.be.closeTo(
         expectedHeat,
@@ -243,64 +228,21 @@ describe("Container", () => {
     });
 
     it("should calculate decreased respiration heat below reference temperature", () => {
-      const lowerTemp = validProductProperties.respiration.referenceTemp - 10;
+      const lowerTemp = productProperties.respiration.referenceTemp - 10;
       container.updateTemperature(lowerTemp);
 
-      const tempDiff =
-        lowerTemp - validProductProperties.respiration.referenceTemp;
+      const tempDiff = lowerTemp - productProperties.respiration.referenceTemp;
       const expectedHeat =
-        validProductProperties.respiration.baseRate *
-        Math.exp(
-          validProductProperties.respiration.temperatureCoeff * tempDiff
-        ) *
-        validProductProperties.mass *
-        validProductProperties.respiration.respirationHeat;
+        productProperties.respiration.baseRate *
+        Math.exp(productProperties.respiration.temperatureCoeff * tempDiff) *
+        productProperties.mass *
+        productProperties.respiration.respirationHeat;
 
       expect(container.calculateRespirationHeat()).to.be.closeTo(
         expectedHeat,
         0.001
       );
     });
-  });
-});
-
-describe("Container Physics", () => {
-  // Test fixtures
-  let standardDimensions: Dimensions;
-  let standardThermalState: ThermalState;
-  let standardProductProperties: ProductProperties;
-  let container: Container;
-
-  beforeEach(() => {
-    standardDimensions = {
-      x: 0.6, // 60cm
-      y: 0.4, // 40cm
-      z: 0.3, // 30cm
-    };
-
-    standardThermalState = {
-      temperature: 20, // 20°C
-      moisture: 0.5, // 0.5 kg water/kg dry matter
-    };
-
-    standardProductProperties = {
-      specificHeat: 3600, // J/(kg·K)
-      waterActivity: 0.95, // 0.95 (dimensionless)
-      mass: 10, // 10kg
-      surfaceArea: 1.5, // 1.5m²
-      respiration: {
-        baseRate: 0.01, // 0.01 W/kg
-        temperatureCoeff: 0.1, // 0.1 1/K
-        referenceTemp: 20, // 20°C
-        respirationHeat: 2000, // 2000 J/kg
-      },
-    };
-
-    container = new Container(
-      standardDimensions,
-      standardThermalState,
-      standardProductProperties
-    );
   });
 
   describe("Heat Transfer Calculations", () => {
@@ -309,7 +251,7 @@ describe("Container Physics", () => {
       const airHumidity = 0.8;
       const heatTransferCoeff = 25; // 25 W/m²·K
 
-      const result = container.calculateHeatTransfer(
+      const result = container.calculateHeatTransferRates(
         airTemp,
         airHumidity,
         heatTransferCoeff
@@ -318,10 +260,10 @@ describe("Container Physics", () => {
       // Expected convective heat = h * A * ΔT
       const expectedConvective =
         heatTransferCoeff *
-        standardProductProperties.surfaceArea *
-        (standardThermalState.temperature - airTemp);
+        productProperties.surfaceArea *
+        (thermalState.temperature - airTemp);
 
-      expect(result.convectiveHeat).to.be.closeTo(expectedConvective, 0.1);
+      expect(result.convectiveHeatRate).to.be.closeTo(expectedConvective, 0.1);
     });
 
     it("should calculate evaporative cooling correctly", () => {
@@ -335,62 +277,62 @@ describe("Container Physics", () => {
         moisture: 0.95,
       };
 
-      const container = new Container(standardDimensions, highMoistureState, {
-        ...standardProductProperties,
+      const container = new Container(dimensions, highMoistureState, {
+        ...productProperties,
         waterActivity: 0.98, // Higher water activity
       });
 
-      const result = container.calculateHeatTransfer(
+      const result = container.calculateHeatTransferRates(
         airTemp,
         airHumidity,
         heatTransferCoeff
       );
 
       // Should have positive evaporation rate due to water activity gradient
-      expect(result.moistureChange).to.be.greaterThan(0);
-      expect(result.evaporativeHeat).to.be.greaterThan(0);
+      expect(result.moistureTransferRate).to.be.greaterThan(0);
+      expect(result.evaporativeHeatRate).to.be.greaterThan(0);
 
       // Additional verification of magnitudes
-      expect(result.evaporativeHeat).to.equal(
-        result.moistureChange * 2.45e6 // Latent heat of vaporization
+      expect(result.evaporativeHeatRate).to.equal(
+        result.moistureTransferRate * 2.45e6 // Latent heat of vaporization
       );
     });
 
     // New test for vapor pressure gradient
     it("should calculate correct evaporation direction based on vapor pressure gradient", () => {
       // Test case 1: Environment favors evaporation
-      const dryAirResult = container.calculateHeatTransfer(
+      const dryAirResult = container.calculateHeatTransferRates(
         20, // Same temperature
         0.3, // Low humidity
         25
       );
-      expect(dryAirResult.moistureChange).to.be.greaterThan(0);
+      expect(dryAirResult.moistureTransferRate).to.be.greaterThan(0);
 
       // Test case 2: Environment favors condensation
-      const humidAirResult = container.calculateHeatTransfer(
+      const humidAirResult = container.calculateHeatTransferRates(
         20, // Same temperature
         0.99, // Very high humidity
         25
       );
-      expect(humidAirResult.moistureChange).to.be.lessThan(0);
+      expect(humidAirResult.moistureTransferRate).to.be.lessThan(0);
 
       // Test case 3: No moisture transfer at equilibrium
-      const equilibriumResult = container.calculateHeatTransfer(
+      const equilibriumResult = container.calculateHeatTransferRates(
         20, // Same temperature
         0.95, // Matches product water activity
         25
       );
-      expect(Math.abs(equilibriumResult.moistureChange)).to.be.closeTo(
+      expect(Math.abs(equilibriumResult.moistureTransferRate)).to.be.closeTo(
         0,
         0.0001
       );
     });
 
     it("should handle zero heat transfer coefficient", () => {
-      const result = container.calculateHeatTransfer(5, 0.8, 0);
-      expect(result.convectiveHeat).to.equal(0);
-      expect(result.evaporativeHeat).to.equal(0);
-      expect(result.moistureChange).to.equal(0);
+      const result = container.calculateHeatTransferRates(5, 0.8, 0);
+      expect(result.convectiveHeatRate).to.equal(0);
+      expect(result.evaporativeHeatRate).to.equal(0);
+      expect(result.moistureTransferRate).to.equal(0);
     });
   });
 
@@ -407,8 +349,7 @@ describe("Container Physics", () => {
       const expectedTemp =
         initialTemp +
         energyChange /
-          (standardProductProperties.mass *
-            standardProductProperties.specificHeat);
+          (productProperties.mass * productProperties.specificHeat);
 
       expect(container.getThermalState().temperature).to.be.closeTo(
         expectedTemp,
@@ -426,7 +367,7 @@ describe("Container Physics", () => {
 
       // Δw = Δm/m
       const expectedMoisture =
-        initialMoisture + moistureChange / standardProductProperties.mass;
+        initialMoisture + moistureChange / productProperties.mass;
 
       expect(container.getThermalState().moisture).to.be.closeTo(
         expectedMoisture,
@@ -435,7 +376,6 @@ describe("Container Physics", () => {
     });
 
     it("should enforce temperature bounds", () => {
-      const dt = 1;
       const largeEnergyChange = 1e6; // Very large energy input
       const moistureChange = 0;
 
@@ -451,7 +391,6 @@ describe("Container Physics", () => {
     });
 
     it("should enforce moisture content bounds", () => {
-      const dt = 1;
       const energyChange = 0;
 
       // Test upper bound
@@ -481,7 +420,7 @@ describe("Container Physics", () => {
 
       // Should include respiration, convection, and evaporation
       const respirationHeat = container.calculateRespirationHeat() * dt;
-      const heatTransfer = container.calculateHeatTransfer(
+      const heatTransfer = container.calculateHeatTransferRates(
         airTemp,
         airHumidity,
         heatTransferCoeff
@@ -489,11 +428,12 @@ describe("Container Physics", () => {
 
       const expectedEnergyChange =
         respirationHeat -
-        (heatTransfer.convectiveHeat + heatTransfer.evaporativeHeat) * dt;
+        (heatTransfer.convectiveHeatRate + heatTransfer.evaporativeHeatRate) *
+          dt;
 
       expect(energyChange).to.be.closeTo(expectedEnergyChange, 0.1);
       expect(moistureChange).to.be.closeTo(
-        -heatTransfer.moistureChange * dt,
+        -heatTransfer.moistureTransferRate * dt,
         0.001
       );
     });
@@ -534,16 +474,15 @@ describe("Container Physics", () => {
   describe("Content Calculations", () => {
     it("should calculate energy content correctly", () => {
       const expectedEnergy =
-        standardProductProperties.mass *
-        standardProductProperties.specificHeat *
-        (standardThermalState.temperature + 273.15); // Convert to Kelvin
+        productProperties.mass *
+        productProperties.specificHeat *
+        (thermalState.temperature + 273.15); // Convert to Kelvin
 
       expect(container.getEnergyContent()).to.be.closeTo(expectedEnergy, 0.1);
     });
 
     it("should calculate moisture content correctly", () => {
-      const expectedMoisture =
-        standardProductProperties.mass * standardThermalState.moisture;
+      const expectedMoisture = productProperties.mass * thermalState.moisture;
 
       expect(container.getMoistureContent()).to.be.closeTo(
         expectedMoisture,
