@@ -5,6 +5,7 @@ export interface LayerFlowConditions {
   inletTemperature: number; // °C
   inletHumidity: number; // kg water/kg dry air
   ambientTemperature: number; // °C
+  turbulenceIntensity: number; // added this property
 }
 
 export interface FlowDistribution {

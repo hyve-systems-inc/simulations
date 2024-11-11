@@ -6,6 +6,7 @@ import {
   ContainerState,
   calculatePerformance,
 } from "./calculatePerformance.js";
+import { PHYSICS_CONSTANTS } from "../../constants.js";
 
 describe("calculatePerformance", () => {
   // Helper functions for test data creation
@@ -56,6 +57,32 @@ describe("calculatePerformance", () => {
     };
   };
 
+  const createMockFlowConditions = (
+    massFlowRate: number = 1,
+    inletTemp: number = 5,
+    inletHumidity: number = 0.5,
+    ambientTemp: number = 25
+  ): LayerFlowConditions => {
+    // Calculate turbulence intensity using Section IV.1 equations
+    const reynolds =
+      (PHYSICS_CONSTANTS.AIR_DENSITY *
+        massFlowRate *
+        PHYSICS_CONSTANTS.HYDRAULIC_DIAMETER) /
+      PHYSICS_CONSTANTS.AIR_VISCOSITY;
+
+    const turbulenceIntensity =
+      PHYSICS_CONSTANTS.TURBULENCE_COEFFICIENT *
+      Math.pow(Math.max(reynolds, 2000), -1 / 8);
+
+    return {
+      massFlowRate,
+      inletTemperature: inletTemp,
+      inletHumidity,
+      ambientTemperature: ambientTemp,
+      turbulenceIntensity,
+    };
+  };
+
   describe("Basic Functionality", () => {
     it("should handle empty state array", () => {
       const result = calculatePerformance(null, [], 0);
@@ -83,12 +110,7 @@ describe("calculatePerformance", () => {
         TEST_CONFIG.finalTemp
       );
 
-      const flowConditions: LayerFlowConditions = {
-        massFlowRate: 1,
-        inletTemperature: TEST_CONFIG.inletTemp,
-        inletHumidity: 0.5,
-        ambientTemperature: 25,
-      };
+      const flowConditions: LayerFlowConditions = createMockFlowConditions();
 
       const expected = calculateExpectedValues([TEST_CONFIG.finalTemp]);
 
@@ -113,12 +135,7 @@ describe("calculatePerformance", () => {
         totalHeatTransfer: -1000,
       };
 
-      const flowConditions: LayerFlowConditions = {
-        massFlowRate: 1,
-        inletTemperature: TEST_CONFIG.inletTemp,
-        inletHumidity: 0.5,
-        ambientTemperature: 25,
-      };
+      const flowConditions: LayerFlowConditions = createMockFlowConditions();
 
       const states = TEST_CONFIG.finalTemps.map((finalTemp, index) =>
         createContainerState(

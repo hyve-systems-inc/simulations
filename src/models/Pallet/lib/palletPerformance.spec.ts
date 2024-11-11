@@ -150,14 +150,30 @@ describe("Pallet Performance Calculator", () => {
     efficiency: number,
     temp: number,
     heatTransfer: number
-  ): LayerPerformance => ({
-    averageCoolingEfficiency: precise(efficiency, PRECISION.EFFICIENCY),
-    uniformityIndex: 0,
-    totalHeatTransfer: precise(heatTransfer, PRECISION.ENERGY),
-    averageTemperature: precise(temp, PRECISION.TEMPERATURE),
-    temperatureVariation: 0,
-    rowTemperatures: [],
-  });
+  ): LayerPerformance => {
+    // Mock turbulence calculation following Section VI.1
+    const mockTurbulenceIntensity = 0.16 * Math.pow(5000, -1 / 8); // Using typical Re = 5000
+    const beta = 0.1; // Turbulence impact factor
+    const gamma = 0.2; // Variation penalty factor
+
+    // Calculate mock TCPI
+    const energyFactor =
+      (1 + beta * Math.pow(mockTurbulenceIntensity, 2)) * 1.0;
+    const tcpi = precise(
+      (efficiency / energyFactor) * (1 - gamma * 0), // Zero variation for mock
+      PRECISION.EFFICIENCY
+    );
+
+    return {
+      averageCoolingEfficiency: precise(efficiency, PRECISION.EFFICIENCY),
+      uniformityIndex: 0,
+      totalHeatTransfer: precise(heatTransfer, PRECISION.ENERGY),
+      averageTemperature: precise(temp, PRECISION.TEMPERATURE),
+      temperatureVariation: 0,
+      tcpi,
+      rowTemperatures: [],
+    };
+  };
 
   describe("calculateAverage", () => {
     Object.entries(TEST_CONFIG.averages).forEach(([scenario, config]) => {

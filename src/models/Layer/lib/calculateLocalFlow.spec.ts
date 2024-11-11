@@ -1,22 +1,42 @@
 import { expect } from "chai";
 import { PHYSICS_CONSTANTS } from "../../constants.js";
 import {
-  LayerFlowConditions,
-  FlowDistribution,
   calculateLocalFlow,
+  LayerFlowConditions,
 } from "./calculateLocalFlow.js";
 
 describe("calculateFlow", () => {
+  const createMockFlowConditions = (
+    massFlowRate: number = 0.5,
+    inletTemp: number = 5,
+    inletHumidity: number = 0.007,
+    ambientTemp: number = 25
+  ): LayerFlowConditions => {
+    // Calculate turbulence intensity using Section IV.1 equations
+    const reynolds =
+      (PHYSICS_CONSTANTS.AIR_DENSITY *
+        massFlowRate *
+        PHYSICS_CONSTANTS.HYDRAULIC_DIAMETER) /
+      PHYSICS_CONSTANTS.AIR_VISCOSITY;
+
+    const turbulenceIntensity =
+      PHYSICS_CONSTANTS.TURBULENCE_COEFFICIENT *
+      Math.pow(Math.max(reynolds, 2000), -1 / 8);
+
+    return {
+      massFlowRate,
+      inletTemperature: inletTemp,
+      inletHumidity,
+      ambientTemperature: ambientTemp,
+      turbulenceIntensity,
+    };
+  };
+
   describe("Basic Flow Calculations", () => {
     it("should calculate flow parameters for standard conditions", () => {
       const TEST_CONFIG = {
         crossSectionalArea: 1.0, // m²
-        flowConditions: {
-          massFlowRate: 0.5, // kg/s
-          inletTemperature: 5, // °C
-          inletHumidity: 0.007, // kg/kg
-          ambientTemperature: 25, // °C
-        },
+        flowConditions: createMockFlowConditions(),
         position: 0.5, // middle of flow path
       };
 
@@ -51,12 +71,7 @@ describe("calculateFlow", () => {
     it("should show flow variation along path length", () => {
       const TEST_CONFIG = {
         crossSectionalArea: 1.0,
-        flowConditions: {
-          massFlowRate: 0.5,
-          inletTemperature: 5,
-          inletHumidity: 0.007,
-          ambientTemperature: 25,
-        },
+        flowConditions: createMockFlowConditions(),
         positions: [0, 0.5, 1.0], // inlet, middle, outlet
       };
 
@@ -83,12 +98,7 @@ describe("calculateFlow", () => {
     it("should maintain approximate mass conservation across flow path", () => {
       const TEST_CONFIG = {
         crossSectionalArea: 1.0,
-        flowConditions: {
-          massFlowRate: 0.5,
-          inletTemperature: 5,
-          inletHumidity: 0.007,
-          ambientTemperature: 25,
-        },
+        flowConditions: createMockFlowConditions(),
         numPositions: 10,
       };
 

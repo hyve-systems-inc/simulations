@@ -1,4 +1,4 @@
-import { LayerPerformance } from "../Layer/lib/calculatePerformance.js";
+import { PalletPerformance } from "../Pallet/lib/palletPerformance.js";
 
 // types/CoolingUnit.ts
 export interface CoolingUnitState {
@@ -23,15 +23,24 @@ export interface DehumidificationResult {
   sensibleHeatRemoved: number; // W
 }
 
+// First, let's define an interface for the power supply configuration
+export interface PowerSupplyConfig {
+  maxPower: number; // W
+  nominalVoltage: number; // V
+  energyCapacity: number; // Wh
+}
+
 // lib/CoolingUnit.ts
 export class CoolingUnit {
   private state: CoolingUnitState;
   private settings: CoolingUnitSettings;
+  private powerSupply: PowerSupplyConfig;
   private lastUpdateTime: number;
   private tcpi: number;
 
-  constructor(settings: CoolingUnitSettings) {
+  constructor(settings: CoolingUnitSettings, powerSupply: PowerSupplyConfig) {
     this.settings = settings;
+    this.powerSupply = powerSupply;
     this.state = {
       coilTemperature: settings.targetTemperature,
       dewPoint: this.calculateDewPoint(
@@ -39,10 +48,73 @@ export class CoolingUnit {
         settings.targetHumidity
       ),
       currentPower: 0,
-      ratedPower: settings.maxPower,
+      ratedPower: Math.min(settings.maxPower, powerSupply.maxPower), // Use lower of thermodynamic or electrical limit
     };
     this.lastUpdateTime = 0;
     this.tcpi = 1.0;
+  }
+
+  /**
+   * Updates power supply configuration, adjusting current power if necessary
+   * @param newConfig New power supply configuration
+   * @returns true if configuration was updated successfully
+   */
+  public updatePowerSupply(newConfig: PowerSupplyConfig): boolean {
+    try {
+      this.powerSupply = newConfig;
+      // Update rated power to respect both limits
+      this.state.ratedPower = Math.min(
+        this.settings.maxPower,
+        newConfig.maxPower
+      );
+
+      // Ensure current power respects new limit
+      if (this.state.currentPower > this.state.ratedPower) {
+        this.state.currentPower = this.state.ratedPower;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Failed to update power supply configuration:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Updates cooling unit power based on TCPI and current performance
+   * Implementation of Section V.3 equations
+   */
+  public updateCoolingPower(
+    performance: PalletPerformance[],
+    currentTime: number
+  ): void {
+    if (
+      currentTime - this.lastUpdateTime <
+      this.settings.controlUpdateInterval
+    ) {
+      return;
+    }
+
+    this.tcpi = this.calculateTCPI(performance);
+
+    // Calculate desired power based on TCPI
+    const powerScaleFactor =
+      this.settings.tcpiTarget / Math.max(this.tcpi, 0.1);
+    const desiredPower = this.state.ratedPower * powerScaleFactor;
+
+    // Apply both thermodynamic and electrical limits
+    this.state.currentPower = Math.min(
+      this.state.ratedPower,
+      Math.max(0, desiredPower)
+    );
+
+    this.updateCoilTemperature();
+    this.lastUpdateTime = currentTime;
+  }
+
+  // Add method to get current power supply configuration
+  public getPowerSupplyConfig(): PowerSupplyConfig {
+    return { ...this.powerSupply };
   }
 
   /**
@@ -54,24 +126,44 @@ export class CoolingUnit {
     airHumidity: number,
     massFlowRate: number
   ): DehumidificationResult {
+    // Physical constants
+    const LATENT_HEAT = 2.45e6; // J/kg
+    const SPECIFIC_HEAT_AIR = 1006; // J/kg·K
+    const ACTIVATION_TEMP_SCALE = 0.2; // °C
+    const ACTIVATION_HUMIDITY_SCALE = 0.00005; // kg/kg
+    const SIGMOID_STEEPNESS = 1;
+    const DEHUMIDIFICATION_THRESHOLD = 1e-7; // kg/s
+
     // Sigmoid activation function
-    const sigmoid = (x: number) => 0.5 * (1 + Math.tanh(8 * x));
+    const sigmoid = (x: number) => 0.5 * (1 + Math.tanh(SIGMOID_STEEPNESS * x));
 
     // Calculate saturation humidity at dew point
     const wsat = this.calculateSaturationHumidity(this.state.dewPoint);
 
-    // Calculate dehumidification activation
-    const tempActivation = sigmoid((airTemp - this.state.dewPoint) / 0.2);
-    const humidityActivation = sigmoid((airHumidity - wsat) / 0.00005);
+    // Calculate humidity difference
+    const humidityDiff = airHumidity - wsat;
 
-    // Calculate mass of water removed
-    const massDehumidified =
-      massFlowRate * (airHumidity - wsat) * tempActivation * humidityActivation;
+    // Calculate activation factors
+    const tempActivation = sigmoid(
+      (airTemp - this.state.dewPoint) / ACTIVATION_TEMP_SCALE
+    );
+    const humidityActivation = sigmoid(
+      humidityDiff / ACTIVATION_HUMIDITY_SCALE
+    );
+
+    // Calculate mass of water removed with threshold
+    let massDehumidified =
+      massFlowRate * humidityDiff * tempActivation * humidityActivation;
+
+    // Apply threshold to avoid numerical noise
+    if (Math.abs(massDehumidified) < DEHUMIDIFICATION_THRESHOLD) {
+      massDehumidified = 0;
+    }
 
     // Calculate heat removal
-    const latentHeatRemoved = massDehumidified * 2.45e6; // Latent heat of vaporization
+    const latentHeatRemoved = massDehumidified * LATENT_HEAT;
     const sensibleHeatRemoved =
-      massFlowRate * 1006 * (airTemp - this.state.coilTemperature);
+      massFlowRate * SPECIFIC_HEAT_AIR * (airTemp - this.state.coilTemperature);
 
     return {
       massDehumidified,
@@ -81,41 +173,9 @@ export class CoolingUnit {
   }
 
   /**
-   * Updates cooling unit power based on TCPI and current performance
-   * Implementation of Section V.3 equations
-   */
-  public updateCoolingPower(
-    performance: LayerPerformance[],
-    currentTime: number
-  ): void {
-    // Only update at specified intervals
-    if (
-      currentTime - this.lastUpdateTime <
-      this.settings.controlUpdateInterval
-    ) {
-      return;
-    }
-
-    // Calculate new TCPI based on cooling performance
-    this.tcpi = this.calculateTCPI(performance);
-
-    // Adjust power based on TCPI ratio
-    const powerRatio = this.tcpi / this.settings.tcpiTarget;
-    this.state.currentPower = Math.min(
-      this.state.ratedPower,
-      this.state.ratedPower * powerRatio
-    );
-
-    // Update coil temperature based on power
-    this.updateCoilTemperature();
-
-    this.lastUpdateTime = currentTime;
-  }
-
-  /**
    * Calculates TCPI based on Section VI.1 equations
    */
-  private calculateTCPI(performance: LayerPerformance[]): number {
+  private calculateTCPI(performance: PalletPerformance[]): number {
     if (performance.length === 0) return 1.0;
 
     // Calculate average cooling efficiency
